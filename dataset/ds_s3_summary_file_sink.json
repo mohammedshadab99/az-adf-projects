@@ -1,0 +1,43 @@
+{
+	"name": "ds_s3_summary_file_sink",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adls",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"adls_container_name": {
+				"type": "string"
+			},
+			"adls_folder_name": {
+				"type": "string"
+			},
+			"adls_summary_file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": {
+					"value": "@dataset().adls_summary_file_name",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().adls_folder_name",
+					"type": "Expression"
+				},
+				"container": {
+					"value": "@dataset().adls_container_name",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}
