@@ -122,7 +122,17 @@
 							"inputs": [
 								{
 									"referenceName": "ds_s3_summary_file_source",
-									"type": "DatasetReference"
+									"type": "DatasetReference",
+									"parameters": {
+										"bucket_name": {
+											"value": "@pipeline().parameters.s3_bucket_name",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@pipeline().parameters.s3_summary_file",
+											"type": "Expression"
+										}
+									}
 								}
 							],
 							"outputs": [
