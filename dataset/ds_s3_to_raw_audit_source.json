@@ -1,0 +1,44 @@
+{
+	"name": "ds_s3_to_raw_audit_source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_adls",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"adls_container_name": {
+				"type": "string"
+			},
+			"adls_folder_name": {
+				"type": "string"
+			},
+			"adls_file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobStorageLocation",
+				"fileName": {
+					"value": "@dataset().adls_file_name",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().adls_folder_name",
+					"type": "Expression"
+				},
+				"container": {
+					"value": "@dataset().adls_container_name",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}
