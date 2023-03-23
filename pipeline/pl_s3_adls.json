@@ -59,6 +59,19 @@
 						"value": "@greater(length(activity('act_get_metadata_s3').output.childItems), 0)",
 						"type": "Expression"
 					},
+					"ifFalseActivities": [
+						{
+							"name": "Fail",
+							"description": "This will puposefully fail the pipeline if the summary file is not seen in s3",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "Summary File is missing in S3",
+								"errorCode": "Summary File is missing in S3, please check and rerun the pipeline"
+							}
+						}
+					],
 					"ifTrueActivities": [
 						{
 							"name": "act_copy_summary_file",
