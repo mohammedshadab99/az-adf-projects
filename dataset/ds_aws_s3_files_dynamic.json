@@ -1,0 +1,368 @@
+{
+	"name": "ds_aws_s3_files_dynamic",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_aws_s3",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AmazonS3Location",
+				"bucketName": "s3-data-engineering-project"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "Prop_0",
+				"type": "String"
+			},
+			{
+				"name": "Flow ID",
+				"type": "String"
+			},
+			{
+				"name": " Source IP",
+				"type": "String"
+			},
+			{
+				"name": " Source Port",
+				"type": "String"
+			},
+			{
+				"name": " Destination IP",
+				"type": "String"
+			},
+			{
+				"name": " Destination Port",
+				"type": "String"
+			},
+			{
+				"name": " Protocol",
+				"type": "String"
+			},
+			{
+				"name": " Timestamp",
+				"type": "String"
+			},
+			{
+				"name": " Flow Duration",
+				"type": "String"
+			},
+			{
+				"name": " Total Fwd Packets",
+				"type": "String"
+			},
+			{
+				"name": " Total Backward Packets",
+				"type": "String"
+			},
+			{
+				"name": "Total Length of Fwd Packets",
+				"type": "String"
+			},
+			{
+				"name": " Total Length of Bwd Packets",
+				"type": "String"
+			},
+			{
+				"name": " Fwd Packet Length Max",
+				"type": "String"
+			},
+			{
+				"name": " Fwd Packet Length Min",
+				"type": "String"
+			},
+			{
+				"name": " Fwd Packet Length Mean",
+				"type": "String"
+			},
+			{
+				"name": " Fwd Packet Length Std",
+				"type": "String"
+			},
+			{
+				"name": "Bwd Packet Length Max",
+				"type": "String"
+			},
+			{
+				"name": " Bwd Packet Length Min",
+				"type": "String"
+			},
+			{
+				"name": " Bwd Packet Length Mean",
+				"type": "String"
+			},
+			{
+				"name": " Bwd Packet Length Std",
+				"type": "String"
+			},
+			{
+				"name": "Flow Bytes/s",
+				"type": "String"
+			},
+			{
+				"name": " Flow Packets/s",
+				"type": "String"
+			},
+			{
+				"name": " Flow IAT Mean",
+				"type": "String"
+			},
+			{
+				"name": " Flow IAT Std",
+				"type": "String"
+			},
+			{
+				"name": " Flow IAT Max",
+				"type": "String"
+			},
+			{
+				"name": " Flow IAT Min",
+				"type": "String"
+			},
+			{
+				"name": "Fwd IAT Total",
+				"type": "String"
+			},
+			{
+				"name": " Fwd IAT Mean",
+				"type": "String"
+			},
+			{
+				"name": " Fwd IAT Std",
+				"type": "String"
+			},
+			{
+				"name": " Fwd IAT Max",
+				"type": "String"
+			},
+			{
+				"name": " Fwd IAT Min",
+				"type": "String"
+			},
+			{
+				"name": "Bwd IAT Total",
+				"type": "String"
+			},
+			{
+				"name": " Bwd IAT Mean",
+				"type": "String"
+			},
+			{
+				"name": " Bwd IAT Std",
+				"type": "String"
+			},
+			{
+				"name": " Bwd IAT Max",
+				"type": "String"
+			},
+			{
+				"name": " Bwd IAT Min",
+				"type": "String"
+			},
+			{
+				"name": "Fwd PSH Flags",
+				"type": "String"
+			},
+			{
+				"name": " Bwd PSH Flags",
+				"type": "String"
+			},
+			{
+				"name": " Fwd URG Flags",
+				"type": "String"
+			},
+			{
+				"name": " Bwd URG Flags",
+				"type": "String"
+			},
+			{
+				"name": " Fwd Header Length",
+				"type": "String"
+			},
+			{
+				"name": " Bwd Header Length",
+				"type": "String"
+			},
+			{
+				"name": "Fwd Packets/s",
+				"type": "String"
+			},
+			{
+				"name": " Bwd Packets/s",
+				"type": "String"
+			},
+			{
+				"name": " Min Packet Length",
+				"type": "String"
+			},
+			{
+				"name": " Max Packet Length",
+				"type": "String"
+			},
+			{
+				"name": " Packet Length Mean",
+				"type": "String"
+			},
+			{
+				"name": " Packet Length Std",
+				"type": "String"
+			},
+			{
+				"name": " Packet Length Variance",
+				"type": "String"
+			},
+			{
+				"name": "FIN Flag Count",
+				"type": "String"
+			},
+			{
+				"name": " SYN Flag Count",
+				"type": "String"
+			},
+			{
+				"name": " RST Flag Count",
+				"type": "String"
+			},
+			{
+				"name": " PSH Flag Count",
+				"type": "String"
+			},
+			{
+				"name": " ACK Flag Count",
+				"type": "String"
+			},
+			{
+				"name": " URG Flag Count",
+				"type": "String"
+			},
+			{
+				"name": " CWE Flag Count",
+				"type": "String"
+			},
+			{
+				"name": " ECE Flag Count",
+				"type": "String"
+			},
+			{
+				"name": " Down/Up Ratio",
+				"type": "String"
+			},
+			{
+				"name": " Average Packet Size",
+				"type": "String"
+			},
+			{
+				"name": " Avg Fwd Segment Size",
+				"type": "String"
+			},
+			{
+				"name": " Avg Bwd Segment Size",
+				"type": "String"
+			},
+			{
+				"name": " Fwd Header Length.1",
+				"type": "String"
+			},
+			{
+				"name": "Fwd Avg Bytes/Bulk",
+				"type": "String"
+			},
+			{
+				"name": " Fwd Avg Packets/Bulk",
+				"type": "String"
+			},
+			{
+				"name": " Fwd Avg Bulk Rate",
+				"type": "String"
+			},
+			{
+				"name": " Bwd Avg Bytes/Bulk",
+				"type": "String"
+			},
+			{
+				"name": " Bwd Avg Packets/Bulk",
+				"type": "String"
+			},
+			{
+				"name": "Bwd Avg Bulk Rate",
+				"type": "String"
+			},
+			{
+				"name": "Subflow Fwd Packets",
+				"type": "String"
+			},
+			{
+				"name": " Subflow Fwd Bytes",
+				"type": "String"
+			},
+			{
+				"name": " Subflow Bwd Packets",
+				"type": "String"
+			},
+			{
+				"name": " Subflow Bwd Bytes",
+				"type": "String"
+			},
+			{
+				"name": "Init_Win_bytes_forward",
+				"type": "String"
+			},
+			{
+				"name": " Init_Win_bytes_backward",
+				"type": "String"
+			},
+			{
+				"name": " act_data_pkt_fwd",
+				"type": "String"
+			},
+			{
+				"name": " min_seg_size_forward",
+				"type": "String"
+			},
+			{
+				"name": "Active Mean",
+				"type": "String"
+			},
+			{
+				"name": " Active Std",
+				"type": "String"
+			},
+			{
+				"name": " Active Max",
+				"type": "String"
+			},
+			{
+				"name": " Active Min",
+				"type": "String"
+			},
+			{
+				"name": "Idle Mean",
+				"type": "String"
+			},
+			{
+				"name": " Idle Std",
+				"type": "String"
+			},
+			{
+				"name": " Idle Max",
+				"type": "String"
+			},
+			{
+				"name": " Idle Min",
+				"type": "String"
+			},
+			{
+				"name": "Label",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

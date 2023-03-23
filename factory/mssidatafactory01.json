@@ -1,0 +1,9 @@
+{
+	"name": "mssidatafactory01",
+	"location": "southindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "55f7b497-1755-4a89-afff-4c3dd3809ec8",
+		"tenantId": "fcfcfe53-84f9-44ad-b8d5-31facd3e394d"
+	}
+}
