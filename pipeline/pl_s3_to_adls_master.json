@@ -1,5 +1,5 @@
 {
-	"name": "pl_s3_summaryfile_check",
+	"name": "pl_s3_to_adls_master",
 	"properties": {
 		"activities": [
 			{
