@@ -148,10 +148,7 @@
 											"value": "@pipeline().parameters.adls_container_name",
 											"type": "Expression"
 										},
-										"adls_folder_name": {
-											"value": "@concat('SummaryFiles/')",
-											"type": "Expression"
-										},
+										"adls_folder_name": "SummaryFiles",
 										"adls_summary_file_name": {
 											"value": "@concat(split(pipeline().parameters.s3_summary_file, '.')[0], '.txt')",
 											"type": "Expression"
