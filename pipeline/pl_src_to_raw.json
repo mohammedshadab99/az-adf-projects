@@ -249,7 +249,8 @@
 				"defaultValue": "dataengineering"
 			},
 			"adls_folder_name": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "SummaryFiles"
 			},
 			"adls_filename": {
 				"type": "string"
