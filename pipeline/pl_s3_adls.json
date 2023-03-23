@@ -56,7 +56,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"expression": {
-						"value": "@greater(length(activity('act_get_metadata_s3').output.childItems), 1)",
+						"value": "@greater(length(activity('act_get_metadata_s3').output.childItems), 0)",
 						"type": "Expression"
 					},
 					"ifTrueActivities": [
