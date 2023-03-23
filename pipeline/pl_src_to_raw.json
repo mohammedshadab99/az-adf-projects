@@ -1,0 +1,125 @@
+{
+	"name": "pl_src_to_raw",
+	"properties": {
+		"activities": [
+			{
+				"name": "act_lookup_summary_file",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"dataset": {
+						"referenceName": "ds_adls_summary_file",
+						"type": "DatasetReference",
+						"parameters": {
+							"adls_container_name": {
+								"value": "@pipeline().parameters.adls_container_name",
+								"type": "Expression"
+							},
+							"adls_folder_name": {
+								"value": "@pipeline().parameters.adls_folder_name",
+								"type": "Expression"
+							},
+							"adls_filename": {
+								"value": "@pipeline().parameters.adls_filename",
+								"type": "Expression"
+							}
+						}
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "act_foreach_s3_to_raw",
+				"description": "This activity will iterate and copy each file from s3 and load into adls",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "act_lookup_summary_file",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('act_lookup_summary_file').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "act_copy_files_s3_to_raw",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AmazonS3ReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_s3_files",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
+			}
+		],
+		"parameters": {
+			"adls_container_name": {
+				"type": "string"
+			},
+			"adls_folder_name": {
+				"type": "string"
+			},
+			"adls_filename": {
+				"type": "string"
+			},
+			"s3_bucket_name": {
+				"type": "string"
+			},
+			"s3_filename": {
+				"type": "string"
+			}
+		},
+		"annotations": []
+	}
+}
