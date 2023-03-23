@@ -5,12 +5,20 @@
 			"referenceName": "ls_aws_s3",
 			"type": "LinkedServiceReference"
 		},
+		"parameters": {
+			"s3_bucket_name": {
+				"type": "string"
+			}
+		},
 		"annotations": [],
 		"type": "DelimitedText",
 		"typeProperties": {
 			"location": {
 				"type": "AmazonS3Location",
-				"bucketName": "s3-data-engineering-project"
+				"bucketName": {
+					"value": "@dataset().s3_bucket_name",
+					"type": "Expression"
+				}
 			},
 			"columnDelimiter": ",",
 			"escapeChar": "\\",
