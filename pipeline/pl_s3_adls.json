@@ -22,6 +22,10 @@
 							"s3_bucket_name": {
 								"value": "@pipeline().parameters.s3_bucket_name",
 								"type": "Expression"
+							},
+							"summary_filename": {
+								"value": "@pipeline().parameters.s3_summary_file",
+								"type": "Expression"
 							}
 						}
 					},
@@ -37,10 +41,68 @@
 						"type": "DelimitedTextReadSettings"
 					}
 				}
+			},
+			{
+				"name": "act_If_Condition",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "act_get_metadata_s3",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@greater(length(activity('act_get_metadata_s3').output.childItems), 1)",
+						"type": "Expression"
+					},
+					"ifTrueActivities": [
+						{
+							"name": "act_copy_summary_file",
+							"description": "This activity will copy the summary file from s3 bucket to azure storage account",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AmazonS3ReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"enableStaging": false
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_s3_summary_file_source",
+									"type": "DatasetReference"
+								}
+							]
+						}
+					]
+				}
 			}
 		],
 		"parameters": {
 			"s3_bucket_name": {
+				"type": "string"
+			},
+			"s3_summary_file": {
 				"type": "string"
 			}
 		},
