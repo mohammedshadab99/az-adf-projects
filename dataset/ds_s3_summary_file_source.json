@@ -1,0 +1,37 @@
+{
+	"name": "ds_s3_summary_file_source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_aws_s3",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"bucket_name": {
+				"type": "string"
+			},
+			"file_name": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AmazonS3Location",
+				"bucketName": {
+					"value": "@dataset().bucket_name",
+					"type": "Expression"
+				},
+				"fileName": {
+					"value": "@dataset().file_name",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}
