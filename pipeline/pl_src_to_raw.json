@@ -245,7 +245,8 @@
 		],
 		"parameters": {
 			"adls_container_name": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "dataengineering"
 			},
 			"adls_folder_name": {
 				"type": "string"

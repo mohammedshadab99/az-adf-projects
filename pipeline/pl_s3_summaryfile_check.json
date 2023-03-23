@@ -149,7 +149,7 @@
 											"type": "Expression"
 										},
 										"adls_folder_name": {
-											"value": "@concat('SummaryFiles/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+											"value": "@concat('SummaryFiles/')",
 											"type": "Expression"
 										},
 										"adls_summary_file_name": {
@@ -161,6 +161,36 @@
 							]
 						}
 					]
+				}
+			},
+			{
+				"name": "act_execute_pl_src_to_raw",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "act_If_Condition",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_src_to_raw",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"adls_container_name": {
+							"value": "@pipeline().parameters.adls_container_name",
+							"type": "Expression"
+						},
+						"s3_bucket_name": {
+							"value": "@pipeline().parameters.s3_bucket_name",
+							"type": "Expression"
+						}
+					}
 				}
 			}
 		],
