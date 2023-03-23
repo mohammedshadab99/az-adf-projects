@@ -174,7 +174,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"pipeline": {
-						"referenceName": "pl_src_to_raw",
+						"referenceName": "pl_src_to_raw_to_refined",
 						"type": "PipelineReference"
 					},
 					"waitOnCompletion": true,
