@@ -183,8 +183,14 @@
 							"value": "@pipeline().parameters.adls_container_name",
 							"type": "Expression"
 						},
+						"adls_folder_name": "SummaryFiles",
+						"adls_filename": "summaryfile.txt",
 						"s3_bucket_name": {
 							"value": "@pipeline().parameters.s3_bucket_name",
+							"type": "Expression"
+						},
+						"s3_filename": {
+							"value": "@pipeline().parameters.s3_summary_file",
 							"type": "Expression"
 						}
 					}
