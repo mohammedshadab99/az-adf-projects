@@ -85,11 +85,36 @@
 										"type": "DelimitedTextReadSettings"
 									}
 								},
-								"enableStaging": false
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobStorageWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
 							},
 							"inputs": [
 								{
 									"referenceName": "ds_s3_summary_file_source",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_s3_summary_file_sink",
 									"type": "DatasetReference"
 								}
 							]
@@ -100,10 +125,16 @@
 		],
 		"parameters": {
 			"s3_bucket_name": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "s3-data-engineering-project"
 			},
 			"s3_summary_file": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "summaryfile.txt"
+			},
+			"adls_container_name": {
+				"type": "string",
+				"defaultValue": "dataengineering"
 			}
 		},
 		"annotations": [],
