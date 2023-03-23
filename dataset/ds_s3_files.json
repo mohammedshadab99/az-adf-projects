@@ -1,0 +1,37 @@
+{
+	"name": "ds_s3_files",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_aws_s3",
+			"type": "LinkedServiceReference"
+		},
+		"parameters": {
+			"s3_bucket_name": {
+				"type": "string"
+			},
+			"s3_filename": {
+				"type": "string"
+			}
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AmazonS3Location",
+				"bucketName": {
+					"value": "@dataset().s3_bucket_name",
+					"type": "Expression"
+				},
+				"fileName": {
+					"value": "@dataset().s3_filename",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	}
+}
