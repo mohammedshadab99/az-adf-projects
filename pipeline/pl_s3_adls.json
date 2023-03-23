@@ -115,7 +115,21 @@
 							"outputs": [
 								{
 									"referenceName": "ds_s3_summary_file_sink",
-									"type": "DatasetReference"
+									"type": "DatasetReference",
+									"parameters": {
+										"adls_container_name": {
+											"value": "@pipeline().parameters.adls_container_name",
+											"type": "Expression"
+										},
+										"adls_folder_name": {
+											"value": "@concat(formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+											"type": "Expression"
+										},
+										"adls_summary_file_name": {
+											"value": "@pipeline().parameters.s3_summary_file",
+											"type": "Expression"
+										}
+									}
 								}
 							]
 						}
