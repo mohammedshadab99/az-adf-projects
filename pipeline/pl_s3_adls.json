@@ -23,7 +23,7 @@
 								"value": "@pipeline().parameters.s3_bucket_name",
 								"type": "Expression"
 							},
-							"summary_filename": {
+							"s3_summary_file": {
 								"value": "@pipeline().parameters.s3_summary_file",
 								"type": "Expression"
 							}
@@ -167,7 +167,7 @@
 			},
 			"s3_summary_file": {
 				"type": "string",
-				"defaultValue": "summaryfile.txt"
+				"defaultValue": "summaryfile.*"
 			},
 			"adls_container_name": {
 				"type": "string",
