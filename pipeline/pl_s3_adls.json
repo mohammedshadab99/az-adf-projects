@@ -59,6 +59,19 @@
 						"value": "@greater(length(activity('act_get_metadata_s3').output.childItems), 1)",
 						"type": "Expression"
 					},
+					"ifFalseActivities": [
+						{
+							"name": "Fail",
+							"description": "This activity will fail the pipeline purposefully",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "Summary File Missing in S3",
+								"errorCode": "Pipeline failed due to Summary File Missing in S3, please check and rerun the pipeline."
+							}
+						}
+					],
 					"ifTrueActivities": [
 						{
 							"name": "act_copy_summary_file",
@@ -122,7 +135,7 @@
 											"type": "Expression"
 										},
 										"adls_folder_name": {
-											"value": "@concat(formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+											"value": "@concat('SummaryFiles/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
 											"type": "Expression"
 										},
 										"adls_summary_file_name": {
