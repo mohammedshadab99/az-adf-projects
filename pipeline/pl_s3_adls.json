@@ -1,9 +1,9 @@
 {
-	"name": "pipeline1",
+	"name": "pl_s3_adls",
 	"properties": {
 		"activities": [
 			{
-				"name": "Get Metadata1",
+				"name": "act_get_metadata_s3",
 				"type": "GetMetadata",
 				"dependsOn": [],
 				"policy": {
@@ -17,7 +17,13 @@
 				"typeProperties": {
 					"dataset": {
 						"referenceName": "ds_aws_s3_files_dynamic",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"s3_bucket_name": {
+								"value": "@pipeline().parameters.s3_bucket_name",
+								"type": "Expression"
+							}
+						}
 					},
 					"fieldList": [
 						"childItems"
@@ -33,6 +39,11 @@
 				}
 			}
 		],
+		"parameters": {
+			"s3_bucket_name": {
+				"type": "string"
+			}
+		},
 		"annotations": [],
 		"lastPublishTime": "2023-03-23T10:15:54Z"
 	},
