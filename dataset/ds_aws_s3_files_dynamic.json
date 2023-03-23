@@ -8,6 +8,9 @@
 		"parameters": {
 			"s3_bucket_name": {
 				"type": "string"
+			},
+			"summary_filename": {
+				"type": "string"
 			}
 		},
 		"annotations": [],
@@ -17,6 +20,10 @@
 				"type": "AmazonS3Location",
 				"bucketName": {
 					"value": "@dataset().s3_bucket_name",
+					"type": "Expression"
+				},
+				"fileName": {
+					"value": "@dataset().summary_filename",
 					"type": "Expression"
 				}
 			},
