@@ -93,7 +93,7 @@
 								"sink": {
 									"type": "DelimitedTextSink",
 									"storeSettings": {
-										"type": "AzureBlobStorageWriteSettings"
+										"type": "AzureBlobFSWriteSettings"
 									},
 									"formatSettings": {
 										"type": "DelimitedTextWriteSettings",
@@ -132,15 +132,15 @@
 									"referenceName": "ds_s3_adls_sink",
 									"type": "DatasetReference",
 									"parameters": {
-										"adls_container_name": {
+										"container_name": {
 											"value": "@pipeline().parameters.adls_container_name",
 											"type": "Expression"
 										},
-										"adls_folder_name": {
+										"folder_name": {
 											"value": "@concat('Raw/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
 											"type": "Expression"
 										},
-										"adls_filename": {
+										"filename": {
 											"value": "@concat(item().FileName, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd'))",
 											"type": "Expression"
 										}
