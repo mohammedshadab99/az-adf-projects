@@ -137,7 +137,7 @@
 													"type": "Expression"
 												},
 												"file_name": {
-													"value": "@concat(item().name, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd.parquet'))",
+													"value": "@concat(item().name, '.parquet')",
 													"type": "Expression"
 												}
 											}
@@ -167,7 +167,7 @@
 										"source": {
 											"type": "SqlDWSource",
 											"sqlReaderQuery": {
-												"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_raw_to_refined').output.dataRead}' as RawCount,\n'@{activity('act_copy_raw_to_refined').output.dataWritten}' as RefinedCount\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_raw_to_refined').output.executionDetails[0].status}' as ExecutionStatus\n",
+												"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_raw_to_refined').output.rowsRead}' as RawCount,\n'@{activity('act_copy_raw_to_refined').output.rowsWritten}' as RefinedCount\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_raw_to_refined').output.executionDetails[0].status}' as ExecutionStatus\n",
 												"type": "Expression"
 											},
 											"queryTimeout": "02:00:00",
@@ -212,7 +212,7 @@
 												},
 												"folder_name": "Audit/temp",
 												"file_name": {
-													"value": "@item().FileName",
+													"value": "@item().name",
 													"type": "Expression"
 												}
 											}
