@@ -213,7 +213,7 @@
 											"value": "@pipeline().parameters.adls_container_name",
 											"type": "Expression"
 										},
-										"folder_name": "Audits/temp",
+										"folder_name": "Audits/temp/",
 										"filename": {
 											"value": "@item().FileName",
 											"type": "Expression"
