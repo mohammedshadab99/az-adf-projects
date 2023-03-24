@@ -209,9 +209,6 @@
 			"adls_container_name": {
 				"type": "string",
 				"defaultValue": "data"
-			},
-			"pipeline_parameter": {
-				"type": "string"
 			}
 		},
 		"annotations": [],
