@@ -1,0 +1,2265 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name",
+			"defaultValue": "mssidatafactory01"
+		},
+		"ls_adls_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'ls_adls'"
+		},
+		"ls_adls_gen2_accountKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'accountKey' of 'ls_adls_gen2'"
+		},
+		"ls_aws_s3_secretAccessKey": {
+			"type": "secureString",
+			"metadata": "Secure string for 'secretAccessKey' of 'ls_aws_s3'"
+		},
+		"ls_synapse_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'ls_synapse'"
+		},
+		"ls_adls_gen2_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://mssistoragegen2.dfs.core.windows.net"
+		},
+		"ls_aws_s3_properties_typeProperties_accessKeyId": {
+			"type": "string",
+			"defaultValue": "AKIAY4SG3XDOFEGKR5TG"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_raw_to_refined')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "act_foreach_raw_to_refined",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "act_get_raw_files",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('act_get_raw_files').output.childItems",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "act_copy_raw_to_refined",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AzureBlobFSReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "ParquetSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "ParquetWriteSettings"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_raw_file_source",
+											"type": "DatasetReference",
+											"parameters": {
+												"container_name": {
+													"value": "@pipeline().parameters.adls_container_name",
+													"type": "Expression"
+												},
+												"folder_name": {
+													"value": "@concat('Raw/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
+													"type": "Expression"
+												},
+												"filename": {
+													"value": "@item().name",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_raw_refined_sink",
+											"type": "DatasetReference",
+											"parameters": {
+												"container_name": {
+													"value": "@pipeline().parameters.adls_container_name",
+													"type": "Expression"
+												},
+												"folder_name": {
+													"value": "@concat('Refined/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
+													"type": "Expression"
+												},
+												"file_name": {
+													"value": "@concat(item().name, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd.parquet'))",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "act_copy_refined_audits",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "act_copy_raw_to_refined",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlDWSource",
+											"sqlReaderQuery": {
+												"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_raw_to_refined').output.dataRead}' as RawCount,\n'@{activity('act_copy_raw_to_refined').output.dataWritten}' as RefinedCount\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_raw_to_refined').output.executionDetails[0].status}' as ExecutionStatus\n",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_refined_audits_source",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_refined_audits_sink",
+											"type": "DatasetReference",
+											"parameters": {
+												"container_name": {
+													"value": "@pipeline().parameters.adls_container_name",
+													"type": "Expression"
+												},
+												"folder_name": "Audit/temp",
+												"file_name": {
+													"value": "@item().FileName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "act_merge_refined_audits",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "act_foreach_raw_to_refined",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFolderPath": "Audits/temp",
+									"wildcardFileName": "*",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_refined_audits_merge_source",
+								"type": "DatasetReference",
+								"parameters": {
+									"container_name": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
+									"folder_name": "Audits/temp"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_refined_audits_merge_sink",
+								"type": "DatasetReference",
+								"parameters": {
+									"container_name": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
+									"folder_name": "Audits",
+									"filename": "raw_to_refined_audit.csv"
+								}
+							}
+						]
+					},
+					{
+						"name": "act_delete_refined_audits",
+						"type": "Delete",
+						"dependsOn": [
+							{
+								"activity": "act_merge_refined_audits",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "ds_delete_refined_audits",
+								"type": "DatasetReference",
+								"parameters": {
+									"container_name": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
+									"folder_name": "Audits/temp"
+								}
+							},
+							"enableLogging": false,
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							}
+						}
+					},
+					{
+						"name": "act_get_raw_files",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "ds_get_raw_files",
+								"type": "DatasetReference",
+								"parameters": {
+									"adls_container_name": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
+									"raw_folder_path": {
+										"value": "@concat('Raw/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+										"type": "Expression"
+									}
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"adls_container_name": {
+						"type": "string"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_refined_audits_merge_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_refined_audits_merge_sink')]",
+				"[concat(variables('factoryId'), '/datasets/ds_delete_refined_audits')]",
+				"[concat(variables('factoryId'), '/datasets/ds_get_raw_files')]",
+				"[concat(variables('factoryId'), '/datasets/ds_raw_file_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_raw_refined_sink')]",
+				"[concat(variables('factoryId'), '/datasets/ds_refined_audits_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_refined_audits_sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_s3_to_adls_master')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "act_get_metadata_s3",
+						"type": "GetMetadata",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "ds_aws_s3_files_dynamic",
+								"type": "DatasetReference",
+								"parameters": {
+									"s3_bucket_name": {
+										"value": "@pipeline().parameters.s3_bucket_name",
+										"type": "Expression"
+									},
+									"s3_summary_file": {
+										"value": "@pipeline().parameters.s3_summary_file",
+										"type": "Expression"
+									}
+								}
+							},
+							"fieldList": [
+								"childItems"
+							],
+							"storeSettings": {
+								"type": "AmazonS3ReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							},
+							"formatSettings": {
+								"type": "DelimitedTextReadSettings"
+							}
+						}
+					},
+					{
+						"name": "act_If_Condition",
+						"type": "IfCondition",
+						"dependsOn": [
+							{
+								"activity": "act_get_metadata_s3",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"expression": {
+								"value": "@greater(length(activity('act_get_metadata_s3').output.childItems), 0)",
+								"type": "Expression"
+							},
+							"ifFalseActivities": [
+								{
+									"name": "Fail",
+									"description": "This will puposefully fail the pipeline if the summary file is not seen in s3",
+									"type": "Fail",
+									"dependsOn": [],
+									"userProperties": [],
+									"typeProperties": {
+										"message": "Summary File is missing in S3",
+										"errorCode": "Summary File is missing in S3, please check and rerun the pipeline"
+									}
+								}
+							],
+							"ifTrueActivities": [
+								{
+									"name": "act_copy_summary_file",
+									"description": "This activity will copy the summary file from s3 bucket to azure storage account",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AmazonS3ReadSettings",
+												"recursive": true,
+												"wildcardFileName": {
+													"value": "@pipeline().parameters.s3_summary_file",
+													"type": "Expression"
+												},
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_s3_summary_file_source",
+											"type": "DatasetReference",
+											"parameters": {
+												"bucket_name": {
+													"value": "@pipeline().parameters.s3_bucket_name",
+													"type": "Expression"
+												},
+												"file_name": {
+													"value": "@pipeline().parameters.s3_summary_file",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_s3_summary_file_sink",
+											"type": "DatasetReference",
+											"parameters": {
+												"adls_container_name": {
+													"value": "@pipeline().parameters.adls_container_name",
+													"type": "Expression"
+												},
+												"adls_folder_name": "SummaryFiles",
+												"adls_filename": {
+													"value": "@concat(split(pipeline().parameters.s3_summary_file, '.')[0], '.txt')",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "act_execute_pl_src_to_raw",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "act_If_Condition",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_src_to_raw",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"adls_container_name": {
+									"value": "@pipeline().parameters.adls_container_name",
+									"type": "Expression"
+								},
+								"adls_folder_name": "SummaryFiles",
+								"adls_filename": "summaryfile.txt",
+								"s3_bucket_name": {
+									"value": "@pipeline().parameters.s3_bucket_name",
+									"type": "Expression"
+								},
+								"s3_filename": {
+									"value": "@pipeline().parameters.s3_summary_file",
+									"type": "Expression"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"s3_bucket_name": {
+						"type": "string",
+						"defaultValue": "s3-data-engineering-project"
+					},
+					"s3_summary_file": {
+						"type": "string",
+						"defaultValue": "summaryfile.*"
+					},
+					"adls_container_name": {
+						"type": "string",
+						"defaultValue": "data"
+					}
+				},
+				"annotations": [],
+				"lastPublishTime": "2023-03-23T10:15:54Z"
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_aws_s3_files_dynamic')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_src_to_raw')]",
+				"[concat(variables('factoryId'), '/datasets/ds_s3_summary_file_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_s3_summary_file_sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/pl_src_to_raw')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"activities": [
+					{
+						"name": "act_lookup_summary_file",
+						"type": "Lookup",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"dataset": {
+								"referenceName": "ds_adls_summary_file",
+								"type": "DatasetReference",
+								"parameters": {
+									"adls_container_name": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
+									"adls_folder_name": {
+										"value": "@pipeline().parameters.adls_folder_name",
+										"type": "Expression"
+									},
+									"adls_filename": {
+										"value": "@pipeline().parameters.adls_filename",
+										"type": "Expression"
+									}
+								}
+							},
+							"firstRowOnly": false
+						}
+					},
+					{
+						"name": "act_foreach_s3_to_raw",
+						"description": "This activity will iterate and copy each file from s3 and load into adls",
+						"type": "ForEach",
+						"dependsOn": [
+							{
+								"activity": "act_lookup_summary_file",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"items": {
+								"value": "@activity('act_lookup_summary_file').output.value",
+								"type": "Expression"
+							},
+							"activities": [
+								{
+									"name": "act_copy_files_s3_to_raw",
+									"type": "Copy",
+									"dependsOn": [],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "DelimitedTextSource",
+											"storeSettings": {
+												"type": "AmazonS3ReadSettings",
+												"recursive": true,
+												"enablePartitionDiscovery": false
+											},
+											"formatSettings": {
+												"type": "DelimitedTextReadSettings"
+											}
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_s3_files",
+											"type": "DatasetReference",
+											"parameters": {
+												"s3_bucket_name": {
+													"value": "@pipeline().parameters.s3_bucket_name",
+													"type": "Expression"
+												},
+												"s3_filename": {
+													"value": "@item().FileName",
+													"type": "Expression"
+												}
+											}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_s3_adls_sink",
+											"type": "DatasetReference",
+											"parameters": {
+												"container_name": {
+													"value": "@pipeline().parameters.adls_container_name",
+													"type": "Expression"
+												},
+												"folder_name": {
+													"value": "@concat('Raw/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
+													"type": "Expression"
+												},
+												"filename": {
+													"value": "@concat(item().FileName, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd'))",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								},
+								{
+									"name": "act_copy_raw_audits",
+									"type": "Copy",
+									"dependsOn": [
+										{
+											"activity": "act_copy_files_s3_to_raw",
+											"dependencyConditions": [
+												"Succeeded"
+											]
+										}
+									],
+									"policy": {
+										"timeout": "0.12:00:00",
+										"retry": 0,
+										"retryIntervalInSeconds": 30,
+										"secureOutput": false,
+										"secureInput": false
+									},
+									"userProperties": [],
+									"typeProperties": {
+										"source": {
+											"type": "SqlDWSource",
+											"sqlReaderQuery": {
+												"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_files_s3_to_raw').output.dataRead}' as SourceCount,\n'@{activity('act_copy_files_s3_to_raw').output.dataWritten}' as RawCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_files_s3_to_raw').output.executionDetails[0].status}' as ExecutionStatus\n",
+												"type": "Expression"
+											},
+											"queryTimeout": "02:00:00",
+											"partitionOption": "None"
+										},
+										"sink": {
+											"type": "DelimitedTextSink",
+											"storeSettings": {
+												"type": "AzureBlobFSWriteSettings"
+											},
+											"formatSettings": {
+												"type": "DelimitedTextWriteSettings",
+												"quoteAllText": true,
+												"fileExtension": ".txt"
+											}
+										},
+										"enableStaging": false,
+										"translator": {
+											"type": "TabularTranslator",
+											"typeConversion": true,
+											"typeConversionSettings": {
+												"allowDataTruncation": true,
+												"treatBooleanAsNumber": false
+											}
+										}
+									},
+									"inputs": [
+										{
+											"referenceName": "ds_raw_audits",
+											"type": "DatasetReference",
+											"parameters": {}
+										}
+									],
+									"outputs": [
+										{
+											"referenceName": "ds_raw_audits_sink",
+											"type": "DatasetReference",
+											"parameters": {
+												"container_name": {
+													"value": "@pipeline().parameters.adls_container_name",
+													"type": "Expression"
+												},
+												"folder_name": "Audits/temp/",
+												"filename": {
+													"value": "@item().FileName",
+													"type": "Expression"
+												}
+											}
+										}
+									]
+								}
+							]
+						}
+					},
+					{
+						"name": "act_merge_raw_audits",
+						"type": "Copy",
+						"dependsOn": [
+							{
+								"activity": "act_foreach_s3_to_raw",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "DelimitedTextSource",
+								"storeSettings": {
+									"type": "AzureBlobFSReadSettings",
+									"recursive": true,
+									"wildcardFolderPath": "Audits/temp",
+									"wildcardFileName": "*",
+									"enablePartitionDiscovery": false
+								},
+								"formatSettings": {
+									"type": "DelimitedTextReadSettings"
+								}
+							},
+							"sink": {
+								"type": "DelimitedTextSink",
+								"storeSettings": {
+									"type": "AzureBlobFSWriteSettings",
+									"copyBehavior": "MergeFiles"
+								},
+								"formatSettings": {
+									"type": "DelimitedTextWriteSettings",
+									"quoteAllText": true,
+									"fileExtension": ".txt"
+								}
+							},
+							"enableStaging": false,
+							"translator": {
+								"type": "TabularTranslator",
+								"typeConversion": true,
+								"typeConversionSettings": {
+									"allowDataTruncation": true,
+									"treatBooleanAsNumber": false
+								}
+							}
+						},
+						"inputs": [
+							{
+								"referenceName": "ds_raw_audits_merge_source",
+								"type": "DatasetReference",
+								"parameters": {
+									"container_name": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
+									"folder_name": "Audits/temp/"
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "ds_raw_audits_merge_sink",
+								"type": "DatasetReference",
+								"parameters": {
+									"container_name": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
+									"folder_name": {
+										"value": "@concat('Audits/',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd/'))",
+										"type": "Expression"
+									},
+									"filename": "source_to_raw_audits.csv"
+								}
+							}
+						]
+					},
+					{
+						"name": "act_delete_temp_audits",
+						"type": "Delete",
+						"dependsOn": [
+							{
+								"activity": "act_merge_raw_audits",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"dataset": {
+								"referenceName": "ds_temp_audits",
+								"type": "DatasetReference",
+								"parameters": {
+									"container_name": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
+									"folder_name": "Audits/temp"
+								}
+							},
+							"enableLogging": false,
+							"storeSettings": {
+								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
+								"enablePartitionDiscovery": false
+							}
+						}
+					},
+					{
+						"name": "act_execute_pl_raw_to_refined",
+						"type": "ExecutePipeline",
+						"dependsOn": [
+							{
+								"activity": "act_delete_temp_audits",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"userProperties": [],
+						"typeProperties": {
+							"pipeline": {
+								"referenceName": "pl_raw_to_refined",
+								"type": "PipelineReference"
+							},
+							"waitOnCompletion": true,
+							"parameters": {
+								"adls_container_name": {
+									"value": "@pipeline().parameters.adls_container_name",
+									"type": "Expression"
+								}
+							}
+						}
+					}
+				],
+				"policy": {
+					"elapsedTimeMetric": {},
+					"cancelAfter": {}
+				},
+				"parameters": {
+					"adls_container_name": {
+						"type": "string",
+						"defaultValue": "dataengineering"
+					},
+					"adls_folder_name": {
+						"type": "string",
+						"defaultValue": "SummaryFiles"
+					},
+					"adls_filename": {
+						"type": "string",
+						"defaultValue": "summaryfile.txt"
+					},
+					"s3_bucket_name": {
+						"type": "string"
+					},
+					"s3_filename": {
+						"type": "string"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/ds_adls_summary_file')]",
+				"[concat(variables('factoryId'), '/datasets/ds_raw_audits_merge_source')]",
+				"[concat(variables('factoryId'), '/datasets/ds_raw_audits_merge_sink')]",
+				"[concat(variables('factoryId'), '/datasets/ds_temp_audits')]",
+				"[concat(variables('factoryId'), '/pipelines/pl_raw_to_refined')]",
+				"[concat(variables('factoryId'), '/datasets/ds_s3_files')]",
+				"[concat(variables('factoryId'), '/datasets/ds_s3_adls_sink')]",
+				"[concat(variables('factoryId'), '/datasets/ds_raw_audits')]",
+				"[concat(variables('factoryId'), '/datasets/ds_raw_audits_sink')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_adls_summary_file')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"adls_container_name": {
+						"type": "string"
+					},
+					"adls_folder_name": {
+						"type": "string"
+					},
+					"adls_filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().adls_filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().adls_folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().adls_container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_aws_s3_files_dynamic')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_aws_s3",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"s3_bucket_name": {
+						"type": "string"
+					},
+					"s3_summary_file": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AmazonS3Location",
+						"bucketName": {
+							"value": "@dataset().s3_bucket_name",
+							"type": "Expression"
+						},
+						"fileName": {
+							"value": "@dataset().s3_summary_file",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": [
+					{
+						"name": "Prop_0",
+						"type": "String"
+					},
+					{
+						"name": "Flow ID",
+						"type": "String"
+					},
+					{
+						"name": " Source IP",
+						"type": "String"
+					},
+					{
+						"name": " Source Port",
+						"type": "String"
+					},
+					{
+						"name": " Destination IP",
+						"type": "String"
+					},
+					{
+						"name": " Destination Port",
+						"type": "String"
+					},
+					{
+						"name": " Protocol",
+						"type": "String"
+					},
+					{
+						"name": " Timestamp",
+						"type": "String"
+					},
+					{
+						"name": " Flow Duration",
+						"type": "String"
+					},
+					{
+						"name": " Total Fwd Packets",
+						"type": "String"
+					},
+					{
+						"name": " Total Backward Packets",
+						"type": "String"
+					},
+					{
+						"name": "Total Length of Fwd Packets",
+						"type": "String"
+					},
+					{
+						"name": " Total Length of Bwd Packets",
+						"type": "String"
+					},
+					{
+						"name": " Fwd Packet Length Max",
+						"type": "String"
+					},
+					{
+						"name": " Fwd Packet Length Min",
+						"type": "String"
+					},
+					{
+						"name": " Fwd Packet Length Mean",
+						"type": "String"
+					},
+					{
+						"name": " Fwd Packet Length Std",
+						"type": "String"
+					},
+					{
+						"name": "Bwd Packet Length Max",
+						"type": "String"
+					},
+					{
+						"name": " Bwd Packet Length Min",
+						"type": "String"
+					},
+					{
+						"name": " Bwd Packet Length Mean",
+						"type": "String"
+					},
+					{
+						"name": " Bwd Packet Length Std",
+						"type": "String"
+					},
+					{
+						"name": "Flow Bytes/s",
+						"type": "String"
+					},
+					{
+						"name": " Flow Packets/s",
+						"type": "String"
+					},
+					{
+						"name": " Flow IAT Mean",
+						"type": "String"
+					},
+					{
+						"name": " Flow IAT Std",
+						"type": "String"
+					},
+					{
+						"name": " Flow IAT Max",
+						"type": "String"
+					},
+					{
+						"name": " Flow IAT Min",
+						"type": "String"
+					},
+					{
+						"name": "Fwd IAT Total",
+						"type": "String"
+					},
+					{
+						"name": " Fwd IAT Mean",
+						"type": "String"
+					},
+					{
+						"name": " Fwd IAT Std",
+						"type": "String"
+					},
+					{
+						"name": " Fwd IAT Max",
+						"type": "String"
+					},
+					{
+						"name": " Fwd IAT Min",
+						"type": "String"
+					},
+					{
+						"name": "Bwd IAT Total",
+						"type": "String"
+					},
+					{
+						"name": " Bwd IAT Mean",
+						"type": "String"
+					},
+					{
+						"name": " Bwd IAT Std",
+						"type": "String"
+					},
+					{
+						"name": " Bwd IAT Max",
+						"type": "String"
+					},
+					{
+						"name": " Bwd IAT Min",
+						"type": "String"
+					},
+					{
+						"name": "Fwd PSH Flags",
+						"type": "String"
+					},
+					{
+						"name": " Bwd PSH Flags",
+						"type": "String"
+					},
+					{
+						"name": " Fwd URG Flags",
+						"type": "String"
+					},
+					{
+						"name": " Bwd URG Flags",
+						"type": "String"
+					},
+					{
+						"name": " Fwd Header Length",
+						"type": "String"
+					},
+					{
+						"name": " Bwd Header Length",
+						"type": "String"
+					},
+					{
+						"name": "Fwd Packets/s",
+						"type": "String"
+					},
+					{
+						"name": " Bwd Packets/s",
+						"type": "String"
+					},
+					{
+						"name": " Min Packet Length",
+						"type": "String"
+					},
+					{
+						"name": " Max Packet Length",
+						"type": "String"
+					},
+					{
+						"name": " Packet Length Mean",
+						"type": "String"
+					},
+					{
+						"name": " Packet Length Std",
+						"type": "String"
+					},
+					{
+						"name": " Packet Length Variance",
+						"type": "String"
+					},
+					{
+						"name": "FIN Flag Count",
+						"type": "String"
+					},
+					{
+						"name": " SYN Flag Count",
+						"type": "String"
+					},
+					{
+						"name": " RST Flag Count",
+						"type": "String"
+					},
+					{
+						"name": " PSH Flag Count",
+						"type": "String"
+					},
+					{
+						"name": " ACK Flag Count",
+						"type": "String"
+					},
+					{
+						"name": " URG Flag Count",
+						"type": "String"
+					},
+					{
+						"name": " CWE Flag Count",
+						"type": "String"
+					},
+					{
+						"name": " ECE Flag Count",
+						"type": "String"
+					},
+					{
+						"name": " Down/Up Ratio",
+						"type": "String"
+					},
+					{
+						"name": " Average Packet Size",
+						"type": "String"
+					},
+					{
+						"name": " Avg Fwd Segment Size",
+						"type": "String"
+					},
+					{
+						"name": " Avg Bwd Segment Size",
+						"type": "String"
+					},
+					{
+						"name": " Fwd Header Length.1",
+						"type": "String"
+					},
+					{
+						"name": "Fwd Avg Bytes/Bulk",
+						"type": "String"
+					},
+					{
+						"name": " Fwd Avg Packets/Bulk",
+						"type": "String"
+					},
+					{
+						"name": " Fwd Avg Bulk Rate",
+						"type": "String"
+					},
+					{
+						"name": " Bwd Avg Bytes/Bulk",
+						"type": "String"
+					},
+					{
+						"name": " Bwd Avg Packets/Bulk",
+						"type": "String"
+					},
+					{
+						"name": "Bwd Avg Bulk Rate",
+						"type": "String"
+					},
+					{
+						"name": "Subflow Fwd Packets",
+						"type": "String"
+					},
+					{
+						"name": " Subflow Fwd Bytes",
+						"type": "String"
+					},
+					{
+						"name": " Subflow Bwd Packets",
+						"type": "String"
+					},
+					{
+						"name": " Subflow Bwd Bytes",
+						"type": "String"
+					},
+					{
+						"name": "Init_Win_bytes_forward",
+						"type": "String"
+					},
+					{
+						"name": " Init_Win_bytes_backward",
+						"type": "String"
+					},
+					{
+						"name": " act_data_pkt_fwd",
+						"type": "String"
+					},
+					{
+						"name": " min_seg_size_forward",
+						"type": "String"
+					},
+					{
+						"name": "Active Mean",
+						"type": "String"
+					},
+					{
+						"name": " Active Std",
+						"type": "String"
+					},
+					{
+						"name": " Active Max",
+						"type": "String"
+					},
+					{
+						"name": " Active Min",
+						"type": "String"
+					},
+					{
+						"name": "Idle Mean",
+						"type": "String"
+					},
+					{
+						"name": " Idle Std",
+						"type": "String"
+					},
+					{
+						"name": " Idle Max",
+						"type": "String"
+					},
+					{
+						"name": " Idle Min",
+						"type": "String"
+					},
+					{
+						"name": "Label",
+						"type": "String"
+					}
+				]
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_aws_s3')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_delete_refined_audits')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_raw_audits')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlDWTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_synapse')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_raw_audits_merge_sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					},
+					"filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_raw_audits_merge_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_raw_audits_sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					},
+					"filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_raw_file_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					},
+					"filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_raw_refined_sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					},
+					"file_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Parquet",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().file_name",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"compressionCodec": "snappy"
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_refined_audits_merge_sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					},
+					"filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_refined_audits_merge_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_refined_audits_sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					},
+					"file_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().file_name",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_refined_audits_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference"
+				},
+				"annotations": [],
+				"type": "AzureSqlDWTable",
+				"schema": [],
+				"typeProperties": {}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_synapse')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_s3_adls_sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					},
+					"filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_s3_files')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_aws_s3",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"s3_bucket_name": {
+						"type": "string"
+					},
+					"s3_filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AmazonS3Location",
+						"bucketName": {
+							"value": "@dataset().s3_bucket_name",
+							"type": "Expression"
+						},
+						"fileName": {
+							"value": "@dataset().s3_filename",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_aws_s3')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_s3_summary_file_sink')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"adls_container_name": {
+						"type": "string"
+					},
+					"adls_folder_name": {
+						"type": "string"
+					},
+					"adls_filename": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"fileName": {
+							"value": "@dataset().adls_filename",
+							"type": "Expression"
+						},
+						"folderPath": {
+							"value": "@dataset().adls_folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().adls_container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_s3_summary_file_source')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_aws_s3",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"bucket_name": {
+						"type": "string"
+					},
+					"file_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AmazonS3Location",
+						"bucketName": {
+							"value": "@dataset().bucket_name",
+							"type": "Expression"
+						},
+						"fileName": {
+							"value": "@dataset().file_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_aws_s3')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_temp_audits')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"container_name": {
+						"type": "string"
+					},
+					"folder_name": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "Binary",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().folder_name",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().container_name",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_adls')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobStorage",
+				"typeProperties": {
+					"connectionString": "[parameters('ls_adls_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_adls_gen2')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('ls_adls_gen2_properties_typeProperties_url')]",
+					"accountKey": {
+						"type": "SecureString",
+						"value": "[parameters('ls_adls_gen2_accountKey')]"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_aws_s3')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AmazonS3",
+				"typeProperties": {
+					"serviceUrl": "https://s3.amazonaws.com",
+					"accessKeyId": "[parameters('ls_aws_s3_properties_typeProperties_accessKeyId')]",
+					"secretAccessKey": {
+						"type": "SecureString",
+						"value": "[parameters('ls_aws_s3_secretAccessKey')]"
+					},
+					"authenticationType": "AccessKey"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ls_synapse')]",
+			"type": "Microsoft.DataFactory/factories/linkedServices",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('ls_synapse_connectionString')]"
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_get_raw_files')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"adls_container_name": {
+						"type": "string"
+					},
+					"raw_folder_path": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().raw_folder_path",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().adls_container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		}
+	]
+}

@@ -1,0 +1,27 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "mssidatafactory01"
+		},
+		"ls_adls_connectionString": {
+			"value": ""
+		},
+		"ls_adls_gen2_accountKey": {
+			"value": ""
+		},
+		"ls_aws_s3_secretAccessKey": {
+			"value": ""
+		},
+		"ls_synapse_connectionString": {
+			"value": ""
+		},
+		"ls_adls_gen2_properties_typeProperties_url": {
+			"value": "https://mssistoragegen2.dfs.core.windows.net"
+		},
+		"ls_aws_s3_properties_typeProperties_accessKeyId": {
+			"value": "AKIAY4SG3XDOFEGKR5TG"
+		}
+	}
+}
