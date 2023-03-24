@@ -349,6 +349,111 @@
 						"enablePartitionDiscovery": false
 					}
 				}
+			},
+			{
+				"name": "act_foreach_raw_to_refined",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "act_foreach_s3_to_raw",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('act_lookup_summary_file').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "act_copy_raw_to_refined",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_raw_file_source",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": {
+											"value": "@pipeline().parameters.adls_container_name",
+											"type": "Expression"
+										},
+										"folder_name": {
+											"value": "@concat('Raw/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
+											"type": "Expression"
+										},
+										"filename": {
+											"value": "@concat(item().FileName, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd'))",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_raw_refined_sink",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": {
+											"value": "@pipeline().parameters.adls_container_name",
+											"type": "Expression"
+										},
+										"folder_name": {
+											"value": "@concat('Refined/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
+											"type": "Expression"
+										},
+										"file_name": {
+											"value": "@concat(item().FileName, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd.parquet'))",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
 			}
 		],
 		"parameters": {
