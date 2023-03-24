@@ -341,18 +341,64 @@
 						"storeSettings": {
 							"type": "AzureBlobFSReadSettings",
 							"recursive": true,
+							"wildcardFolderPath": "Audits",
+							"wildcardFileName": "*",
 							"enablePartitionDiscovery": false
 						},
 						"formatSettings": {
 							"type": "DelimitedTextReadSettings"
 						}
 					},
-					"enableStaging": false
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "MergeFiles"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
 				},
 				"inputs": [
 					{
 						"referenceName": "ds_raw_audits_merge_source",
-						"type": "DatasetReference"
+						"type": "DatasetReference",
+						"parameters": {
+							"container_name": {
+								"value": "@pipeline().parameters.adls_container_name",
+								"type": "Expression"
+							},
+							"folder_name": "Audits"
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_raw_audits_merge_sink",
+						"type": "DatasetReference",
+						"parameters": {
+							"container_name": {
+								"value": "@pipeline().parameters.adls_container_name",
+								"type": "Expression"
+							},
+							"folder_name": {
+								"value": "@concat('Audits/',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd/'))",
+								"type": "Expression"
+							},
+							"filename": "source_to_raw_audits.csv"
+						}
 					}
 				]
 			}
