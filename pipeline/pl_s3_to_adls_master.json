@@ -208,7 +208,7 @@
 			},
 			"adls_container_name": {
 				"type": "string",
-				"defaultValue": "dataengineering"
+				"defaultValue": "data"
 			}
 		},
 		"annotations": [],
