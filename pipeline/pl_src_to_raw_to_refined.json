@@ -149,7 +149,7 @@
 							]
 						},
 						{
-							"name": "act_copy_file_raw_to_refined",
+							"name": "act_copy_raw_audits",
 							"type": "Copy",
 							"dependsOn": [
 								{
@@ -169,23 +169,23 @@
 							"userProperties": [],
 							"typeProperties": {
 								"source": {
-									"type": "DelimitedTextSource",
-									"storeSettings": {
-										"type": "AzureBlobStorageReadSettings",
-										"recursive": true,
-										"enablePartitionDiscovery": false
+									"type": "SqlDWSource",
+									"sqlReaderQuery": {
+										"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{item().RowCount}' as SourceCount,\n'@{activity('act_copy_files_s3_to_raw').output.rowsRead}' as RawCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_files_s3_to_raw').output.executionDetails[0].status}' as ExecutionStatus\n",
+										"type": "Expression"
 									},
-									"formatSettings": {
-										"type": "DelimitedTextReadSettings"
-									}
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
 								},
 								"sink": {
-									"type": "ParquetSink",
+									"type": "DelimitedTextSink",
 									"storeSettings": {
-										"type": "AzureBlobStorageWriteSettings"
+										"type": "AzureBlobFSWriteSettings"
 									},
 									"formatSettings": {
-										"type": "ParquetWriteSettings"
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
 									}
 								},
 								"enableStaging": false,
@@ -200,39 +200,22 @@
 							},
 							"inputs": [
 								{
-									"referenceName": "ds_raw_refined_source",
-									"type": "DatasetReference",
-									"parameters": {
-										"adls_container_name": {
-											"value": "@pipeline().parameters.adls_container_name",
-											"type": "Expression"
-										},
-										"adls_folder_name": {
-											"value": "@concat('Raw/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
-											"type": "Expression"
-										},
-										"adls_file_name": {
-											"value": "@concat(item().FileName, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd'))",
-											"type": "Expression"
-										}
-									}
+									"referenceName": "ds_raw_audits",
+									"type": "DatasetReference"
 								}
 							],
 							"outputs": [
 								{
-									"referenceName": "ds_raw_refined_sink",
+									"referenceName": "ds_raw_audits_sink",
 									"type": "DatasetReference",
 									"parameters": {
-										"adls_container_name": {
+										"container_name": {
 											"value": "@pipeline().parameters.adls_container_name",
 											"type": "Expression"
 										},
-										"adls_folder_name": {
-											"value": "@concat('Refined/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
-											"type": "Expression"
-										},
-										"adls_filename": {
-											"value": "@concat(item().FileName, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd.parquet'))",
+										"folder_name": "Audits",
+										"filename": {
+											"value": "@item().FileName",
 											"type": "Expression"
 										}
 									}
@@ -241,6 +224,97 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "act_copy_file_raw_to_refined",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "act_foreach_s3_to_raw",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobStorageReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "ParquetSink",
+						"storeSettings": {
+							"type": "AzureBlobStorageWriteSettings"
+						},
+						"formatSettings": {
+							"type": "ParquetWriteSettings"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_raw_refined_source",
+						"type": "DatasetReference",
+						"parameters": {
+							"adls_container_name": {
+								"value": "@pipeline().parameters.adls_container_name",
+								"type": "Expression"
+							},
+							"adls_folder_name": {
+								"value": "@concat('Raw/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
+								"type": "Expression"
+							},
+							"adls_file_name": {
+								"value": "@concat(item().FileName, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd'))",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_raw_refined_sink",
+						"type": "DatasetReference",
+						"parameters": {
+							"adls_container_name": {
+								"value": "@pipeline().parameters.adls_container_name",
+								"type": "Expression"
+							},
+							"adls_folder_name": {
+								"value": "@concat('Refined/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'MM/'),formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'),'dd/'))",
+								"type": "Expression"
+							},
+							"adls_filename": {
+								"value": "@concat(item().FileName, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd.parquet'))",
+								"type": "Expression"
+							}
+						}
+					}
+				]
 			}
 		],
 		"parameters": {
