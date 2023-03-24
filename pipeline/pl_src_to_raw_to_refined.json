@@ -355,7 +355,7 @@
 				"type": "ForEach",
 				"dependsOn": [
 					{
-						"activity": "act_foreach_s3_to_raw",
+						"activity": "act_delete_temp_audits",
 						"dependencyConditions": [
 							"Succeeded"
 						]
@@ -528,6 +528,46 @@
 						}
 					]
 				}
+			},
+			{
+				"name": "Copy data1",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "act_foreach_raw_to_refined",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"enableStaging": false
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_refined_audits_merge_source",
+						"type": "DatasetReference"
+					}
+				]
 			}
 		],
 		"parameters": {
