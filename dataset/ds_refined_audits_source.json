@@ -1,0 +1,12 @@
+{
+	"name": "ds_refined_audits_source",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_synapse",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "AzureSqlDWTable",
+		"schema": []
+	}
+}

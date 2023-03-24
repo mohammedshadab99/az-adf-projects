@@ -451,6 +451,80 @@
 									}
 								}
 							]
+						},
+						{
+							"name": "act_copy_refined_audits",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "act_copy_raw_to_refined",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "SqlDWSource",
+									"sqlReaderQuery": {
+										"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_files_s3_to_raw').output.rowsRead}' as RawCount,\n'@{activity('act_copy_raw_to_refined').output.rowsRead}' as RefinedCount\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_files_s3_to_raw').output.executionDetails[0].status}' as ExecutionStatus\n",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_refined_audits_source",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_refined_audits_sink",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": {
+											"value": "@pipeline().parameters.adls_container_name",
+											"type": "Expression"
+										},
+										"folder_name": "Audit/temp",
+										"file_name": {
+											"value": "@item().FileName",
+											"type": "Expression"
+										}
+									}
+								}
+							]
 						}
 					]
 				}
