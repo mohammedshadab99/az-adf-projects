@@ -9,7 +9,7 @@
 				"userProperties": [],
 				"typeProperties": {
 					"items": {
-						"value": "@activity('act_lookup_summary_file').output.value",
+						"value": "@pipeline().parameters.lookup_file_parameter",
 						"type": "Expression"
 					},
 					"activities": [
@@ -296,6 +296,11 @@
 				}
 			}
 		],
+		"parameters": {
+			"lookup_file_parameter": {
+				"type": "array"
+			}
+		},
 		"annotations": []
 	}
 }
