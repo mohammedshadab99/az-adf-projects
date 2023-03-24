@@ -253,7 +253,8 @@
 				"defaultValue": "SummaryFiles"
 			},
 			"adls_filename": {
-				"type": "string"
+				"type": "string",
+				"defaultValue": "summaryfile.txt"
 			},
 			"s3_bucket_name": {
 				"type": "string"
