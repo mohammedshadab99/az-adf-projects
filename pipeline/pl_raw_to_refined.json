@@ -97,7 +97,7 @@
 											"type": "Expression"
 										},
 										"file_name": {
-											"value": "@concat(item().name, '_',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd.parquet'))",
+											"value": "@concat(item().name, '.parquet')",
 											"type": "Expression"
 										}
 									}
