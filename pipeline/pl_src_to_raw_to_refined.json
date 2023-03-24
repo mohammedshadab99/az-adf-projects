@@ -342,7 +342,7 @@
 							"folder_name": "Audits/temp"
 						}
 					},
-					"enableLogging": true,
+					"enableLogging": false,
 					"storeSettings": {
 						"type": "AzureBlobFSReadSettings",
 						"recursive": true,
