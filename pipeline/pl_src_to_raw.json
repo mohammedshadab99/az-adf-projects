@@ -369,10 +369,6 @@
 					},
 					"waitOnCompletion": true,
 					"parameters": {
-						"lookup_file_parameter": {
-							"value": "@activity('act_lookup_summary_file').output.value",
-							"type": "Expression"
-						},
 						"adls_container_name": {
 							"value": "@pipeline().parameters.adls_container_name",
 							"type": "Expression"
