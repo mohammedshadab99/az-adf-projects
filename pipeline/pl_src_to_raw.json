@@ -367,7 +367,13 @@
 						"referenceName": "pl_raw_to_refined",
 						"type": "PipelineReference"
 					},
-					"waitOnCompletion": true
+					"waitOnCompletion": true,
+					"parameters": {
+						"lookup_file_parameter": {
+							"value": "@activity('act_lookup_summary_file').output.value",
+							"type": "Expression"
+						}
+					}
 				}
 			}
 		],
