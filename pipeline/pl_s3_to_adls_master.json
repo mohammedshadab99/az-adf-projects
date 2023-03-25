@@ -209,6 +209,10 @@
 			"adls_container_name": {
 				"type": "string",
 				"defaultValue": "data"
+			},
+			"Refined_folder_name": {
+				"type": "string",
+				"defaultValue": "Refined"
 			}
 		},
 		"annotations": [],
