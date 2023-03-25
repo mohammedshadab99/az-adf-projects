@@ -384,7 +384,10 @@
 								{
 									"name": "container_name",
 									"type": "String",
-									"value": "data",
+									"value": {
+										"value": "@pipeline().parameters.adls_container_name",
+										"type": "Expression"
+									},
 									"direction": "Input"
 								},
 								{
