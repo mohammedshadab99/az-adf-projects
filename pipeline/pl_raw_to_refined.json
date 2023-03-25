@@ -257,7 +257,10 @@
 								"value": "@pipeline().parameters.adls_container_name",
 								"type": "Expression"
 							},
-							"folder_name": "Audits",
+							"folder_name": {
+								"value": "@concat('Audits/',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd/'))",
+								"type": "Expression"
+							},
 							"filename": "raw_to_refined_audit.csv"
 						}
 					}
