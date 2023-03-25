@@ -171,7 +171,7 @@
 								"source": {
 									"type": "SqlDWSource",
 									"sqlReaderQuery": {
-										"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_files_s3_to_raw').output.dataRead}' as SourceCount,\n'@{activity('act_copy_files_s3_to_raw').output.dataWritten}' as RawCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_files_s3_to_raw').output.executionDetails[0].status}' as ExecutionStatus\n",
+										"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{concat(item().name)}' as FileName,\n'@{activity('act_copy_files_s3_to_raw').output.dataRead}' as SourceCount,\n'@{activity('act_copy_files_s3_to_raw').output.dataWritten}' as RawCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_files_s3_to_raw').output.executionDetails[0].status}' as ExecutionStatus\n",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
