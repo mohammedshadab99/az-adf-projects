@@ -192,6 +192,10 @@
 						"s3_filename": {
 							"value": "@pipeline().parameters.s3_summary_file",
 							"type": "Expression"
+						},
+						"refined_folder_name": {
+							"value": "@pipeline().parameters.Refined_folder_name",
+							"type": "Expression"
 						}
 					}
 				}
