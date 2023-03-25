@@ -167,7 +167,7 @@
 										"source": {
 											"type": "SqlDWSource",
 											"sqlReaderQuery": {
-												"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_raw_to_refined').output.rowsRead}' as RawCount,\n'@{activity('act_copy_raw_to_refined').output.rowsCopied}' as RefinedCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_raw_to_refined').output.executionDetails[0].status}' as ExecutionStatus\n",
+												"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{concat(item().name, '_', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd'), '.parquet')}' as FileName,\n'@{activity('act_copy_raw_to_refined').output.rowsRead}' as RawCount,\n'@{activity('act_copy_raw_to_refined').output.rowsCopied}' as RefinedCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_raw_to_refined').output.executionDetails[0].status}' as ExecutionStatus\n",
 												"type": "Expression"
 											},
 											"queryTimeout": "02:00:00",
@@ -298,7 +298,10 @@
 										"value": "@pipeline().parameters.adls_container_name",
 										"type": "Expression"
 									},
-									"folder_name": "Audits",
+									"folder_name": {
+										"value": "@concat('Audits/',formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd/'))",
+										"type": "Expression"
+									},
 									"filename": "raw_to_refined_audit.csv"
 								}
 							}
@@ -375,11 +378,74 @@
 							],
 							"storeSettings": {
 								"type": "AzureBlobFSReadSettings",
+								"recursive": true,
 								"enablePartitionDiscovery": false
 							},
 							"formatSettings": {
 								"type": "DelimitedTextReadSettings"
 							}
+						}
+					},
+					{
+						"name": "act_views_script",
+						"type": "Script",
+						"dependsOn": [
+							{
+								"activity": "act_foreach_raw_to_refined",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "0.12:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"linkedServiceName": {
+							"referenceName": "ls_synapse",
+							"type": "LinkedServiceReference"
+						},
+						"typeProperties": {
+							"scripts": [
+								{
+									"parameters": [
+										{
+											"name": "adls_connection_url",
+											"type": "String",
+											"value": {
+												"value": "@pipeline().globalParameters.adls_connection_url",
+												"type": "Expression"
+											},
+											"direction": "Input"
+										},
+										{
+											"name": "container_name",
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.adls_container_name",
+												"type": "Expression"
+											},
+											"direction": "Input"
+										},
+										{
+											"name": "refined_folder_name",
+											"type": "String",
+											"value": {
+												"value": "@pipeline().parameters.Refined_Folder_Name",
+												"type": "Expression"
+											},
+											"direction": "Input"
+										}
+									],
+									"type": "NonQuery",
+									"text": "DECLARE @DataSource varchar(500) = 'RefinedData'\nDECLARE @Location varchar(500) = concat(@adls_connection_url, '/', @container_name, '/', @refined_folder_name)\nDECLARE @dscommand nvarchar(1000)\n\nif (select count(*) from sys.external_data_sources where name = @DataSource) = 0\nBEGIN\nset @dscommand=N'CREATE EXTERNAL DATA SOURCE ' + @DataSource +\n    ' WITH \n    ( LOCATION = '''+@Location+''');'\nEND\nEXEC sp_executesql @dscommand\n\nDECLARE @contractor_details_script nvarchar(4000)\nset @contractor_details_script = N'CREATE OR ALTER VIEW dbo.contractor_details as \nSELECT * \nFROM OPENROWSET(\n    BULK ''*/*/*/contractor_details.*.parquet'',\n    FORMAT = ''parquet''\n    DATA_SOURCE = '''+@DataSource+'''\n) as [a]'\n\nDECLARE @contractor_details_script nvarchar(4000)\nset @contractor_details_script = N'CREATE OR ALTER VIEW dbo.contractor_details as \nSELECT * \nFROM OPENROWSET(\n    BULK ''*/*/*/contractor_details.*.parquet'',\n    FORMAT = ''parquet''\n    DATA_SOURCE = '''+@DataSource+'''\n) as [a]'\n\n\nDECLARE @laptops_script nvarchar(4000)\nset @contractor_details_script = N'CREATE OR ALTER VIEW dbo.laptops as \nSELECT * \nFROM OPENROWSET(\n    BULK ''*/*/*/laptops.*.parquet'',\n    FORMAT = ''parquet''\n    DATA_SOURCE = '''+@DataSource+'''\n) as [a]'\n\n\nDECLARE @lineofbusiness_script nvarchar(4000)\nset @contractor_details_script = N'CREATE OR ALTER VIEW dbo.lineofbusiness as \nSELECT * \nFROM OPENROWSET(\n    BULK ''*/*/*/lineofbusiness.*.parquet'',\n    FORMAT = ''parquet''\n    DATA_SOURCE = '''+@DataSource+'''\n) as [a]'\n\n\n\nDECLARE @loan_test_script nvarchar(4000)\nset @contractor_details_script = N'CREATE OR ALTER VIEW dbo.loan_test as \nSELECT * \nFROM OPENROWSET(\n    BULK ''*/*/*/loan_test.*.parquet'',\n    FORMAT = ''parquet''\n    DATA_SOURCE = '''+@DataSource+'''\n) as [a]'\n\n\nDECLARE @mobiles_script nvarchar(4000)\nset @contractor_details_script = N'CREATE OR ALTER VIEW dbo.mobiles as \nSELECT * \nFROM OPENROWSET(\n    BULK ''*/*/*/mobiles.*.parquet'',\n    FORMAT = ''parquet''\n    DATA_SOURCE = '''+@DataSource+'''\n) as [a]'\n\nDECLARE @teams_script nvarchar(4000)\nset @contractor_details_script = N'CREATE OR ALTER VIEW dbo.teams as \nSELECT * \nFROM OPENROWSET(\n    BULK ''*/*/*/teams.*.parquet'',\n    FORMAT = ''parquet''\n    DATA_SOURCE = '''+@DataSource+'''\n) as [a]'\n\nDECLARE @Tomatoprices_script nvarchar(4000)\nset @contractor_details_script = N'CREATE OR ALTER VIEW dbo.Tomatoprices as \nSELECT * \nFROM OPENROWSET(\n    BULK ''*/*/*/Tomatoprices.*.parquet'',\n    FORMAT = ''parquet''\n    DATA_SOURCE = '''+@DataSource+'''\n) as [a]'"
+								}
+							],
+							"scriptBlockExecutionTimeout": "02:00:00"
 						}
 					}
 				],
@@ -390,6 +456,9 @@
 				"parameters": {
 					"adls_container_name": {
 						"type": "string"
+					},
+					"Refined_Folder_Name": {
+						"type": "string"
 					}
 				},
 				"annotations": []
@@ -399,6 +468,7 @@
 				"[concat(variables('factoryId'), '/datasets/ds_refined_audits_merge_sink')]",
 				"[concat(variables('factoryId'), '/datasets/ds_delete_refined_audits')]",
 				"[concat(variables('factoryId'), '/datasets/ds_get_raw_files')]",
+				"[concat(variables('factoryId'), '/linkedServices/ls_synapse')]",
 				"[concat(variables('factoryId'), '/datasets/ds_raw_file_source')]",
 				"[concat(variables('factoryId'), '/datasets/ds_raw_refined_sink')]",
 				"[concat(variables('factoryId'), '/datasets/ds_refined_audits_source')]",
@@ -601,6 +671,10 @@
 								"s3_filename": {
 									"value": "@pipeline().parameters.s3_summary_file",
 									"type": "Expression"
+								},
+								"refined_folder_name": {
+									"value": "@pipeline().parameters.Refined_folder_name",
+									"type": "Expression"
 								}
 							}
 						}
@@ -622,6 +696,10 @@
 					"adls_container_name": {
 						"type": "string",
 						"defaultValue": "data"
+					},
+					"Refined_folder_name": {
+						"type": "string",
+						"defaultValue": "Refined"
 					}
 				},
 				"annotations": [],
@@ -809,7 +887,7 @@
 										"source": {
 											"type": "SqlDWSource",
 											"sqlReaderQuery": {
-												"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_files_s3_to_raw').output.dataRead}' as SourceCount,\n'@{activity('act_copy_files_s3_to_raw').output.dataWritten}' as RawCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_files_s3_to_raw').output.executionDetails[0].status}' as ExecutionStatus\n",
+												"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{concat(item().name)}' as FileName,\n'@{activity('act_copy_files_s3_to_raw').output.dataRead}' as SourceCount,\n'@{activity('act_copy_files_s3_to_raw').output.dataWritten}' as RawCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_files_s3_to_raw').output.executionDetails[0].status}' as ExecutionStatus\n",
 												"type": "Expression"
 											},
 											"queryTimeout": "02:00:00",
@@ -1011,6 +1089,10 @@
 								"adls_container_name": {
 									"value": "@pipeline().parameters.adls_container_name",
 									"type": "Expression"
+								},
+								"Refined_Folder_Name": {
+									"value": "@pipeline().parameters.refined_folder_name",
+									"type": "Expression"
 								}
 							}
 						}
@@ -1023,7 +1105,7 @@
 				"parameters": {
 					"adls_container_name": {
 						"type": "string",
-						"defaultValue": "dataengineering"
+						"defaultValue": "data"
 					},
 					"adls_folder_name": {
 						"type": "string",
@@ -1037,6 +1119,9 @@
 						"type": "string"
 					},
 					"s3_filename": {
+						"type": "string"
+					},
+					"refined_folder_name": {
 						"type": "string"
 					}
 				},
@@ -1522,6 +1607,48 @@
 						}
 					}
 				}
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/ds_get_raw_files')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"linkedServiceName": {
+					"referenceName": "ls_adls_gen2",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"adls_container_name": {
+						"type": "string"
+					},
+					"raw_folder_path": {
+						"type": "string"
+					}
+				},
+				"annotations": [],
+				"type": "DelimitedText",
+				"typeProperties": {
+					"location": {
+						"type": "AzureBlobFSLocation",
+						"folderPath": {
+							"value": "@dataset().raw_folder_path",
+							"type": "Expression"
+						},
+						"fileSystem": {
+							"value": "@dataset().adls_container_name",
+							"type": "Expression"
+						}
+					},
+					"columnDelimiter": ",",
+					"escapeChar": "\\",
+					"firstRowAsHeader": true,
+					"quoteChar": "\""
+				},
+				"schema": []
 			},
 			"dependsOn": [
 				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
@@ -2218,48 +2345,6 @@
 				}
 			},
 			"dependsOn": []
-		},
-		{
-			"name": "[concat(parameters('factoryName'), '/ds_get_raw_files')]",
-			"type": "Microsoft.DataFactory/factories/datasets",
-			"apiVersion": "2018-06-01",
-			"properties": {
-				"linkedServiceName": {
-					"referenceName": "ls_adls_gen2",
-					"type": "LinkedServiceReference"
-				},
-				"parameters": {
-					"adls_container_name": {
-						"type": "string"
-					},
-					"raw_folder_path": {
-						"type": "string"
-					}
-				},
-				"annotations": [],
-				"type": "DelimitedText",
-				"typeProperties": {
-					"location": {
-						"type": "AzureBlobFSLocation",
-						"folderPath": {
-							"value": "@dataset().raw_folder_path",
-							"type": "Expression"
-						},
-						"fileSystem": {
-							"value": "@dataset().adls_container_name",
-							"type": "Expression"
-						}
-					},
-					"columnDelimiter": ",",
-					"escapeChar": "\\",
-					"firstRowAsHeader": true,
-					"quoteChar": "\""
-				},
-				"schema": []
-			},
-			"dependsOn": [
-				"[concat(variables('factoryId'), '/linkedServices/ls_adls_gen2')]"
-			]
 		}
 	]
 }

@@ -1,1 +1,6 @@
-{}
+{
+	"adls_connection_url": {
+		"type": "string",
+		"value": "https://mssistoragegen2.dfs.core.windows.net"
+	}
+}
