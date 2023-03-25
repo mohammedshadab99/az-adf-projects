@@ -393,7 +393,10 @@
 								{
 									"name": "refined_folder_name",
 									"type": "String",
-									"value": "refined",
+									"value": {
+										"value": "@pipeline().parameters.Refined_Folder_Name",
+										"type": "Expression"
+									},
 									"direction": "Input"
 								}
 							],
@@ -407,6 +410,9 @@
 		],
 		"parameters": {
 			"adls_container_name": {
+				"type": "string"
+			},
+			"Refined_Folder_Name": {
 				"type": "string"
 			}
 		},
