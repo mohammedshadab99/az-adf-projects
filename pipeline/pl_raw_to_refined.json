@@ -127,7 +127,7 @@
 								"source": {
 									"type": "SqlDWSource",
 									"sqlReaderQuery": {
-										"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{activity('act_copy_raw_to_refined').output.rowsRead}' as RawCount,\n'@{activity('act_copy_raw_to_refined').output.rowsCopied}' as RefinedCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_raw_to_refined').output.executionDetails[0].status}' as ExecutionStatus\n",
+										"value": "SELECT \n'@{pipeline().DataFactory}' as DataFactoryName,\n'@{pipeline().Pipeline}' as PipelineName,\n'@{concat(item().name, '_', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd'), '.parquet')}' as FileName,\n'@{activity('act_copy_raw_to_refined').output.rowsRead}' as RawCount,\n'@{activity('act_copy_raw_to_refined').output.rowsCopied}' as RefinedCount,\n'@{pipeline().RunId}' as RunID,\n'@{pipeline().TriggerTime}' as ExecutionDate,\n'@{activity('act_copy_raw_to_refined').output.executionDetails[0].status}' as ExecutionStatus\n",
 										"type": "Expression"
 									},
 									"queryTimeout": "02:00:00",
@@ -334,6 +334,7 @@
 					],
 					"storeSettings": {
 						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
 						"enablePartitionDiscovery": false
 					},
 					"formatSettings": {
