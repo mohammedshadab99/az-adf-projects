@@ -1,5 +1,13 @@
 {
 	"name": "mssidatafactory01",
+	"properties": {
+		"globalParameters": {
+			"adls_connection_url": {
+				"type": "string",
+				"value": "https://mssistoragegen2.dfs.core.windows.net"
+			}
+		}
+	},
 	"location": "southindia",
 	"identity": {
 		"type": "SystemAssigned",
