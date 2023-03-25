@@ -372,6 +372,10 @@
 						"adls_container_name": {
 							"value": "@pipeline().parameters.adls_container_name",
 							"type": "Expression"
+						},
+						"Refined_Folder_Name": {
+							"value": "@pipeline().parameters.refined_folder_name",
+							"type": "Expression"
 						}
 					}
 				}
@@ -394,6 +398,9 @@
 				"type": "string"
 			},
 			"s3_filename": {
+				"type": "string"
+			},
+			"refined_folder_name": {
 				"type": "string"
 			}
 		},
