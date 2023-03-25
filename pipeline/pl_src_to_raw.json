@@ -380,7 +380,7 @@
 		"parameters": {
 			"adls_container_name": {
 				"type": "string",
-				"defaultValue": "dataengineering"
+				"defaultValue": "data"
 			},
 			"adls_folder_name": {
 				"type": "string",
