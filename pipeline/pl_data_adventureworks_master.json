@@ -1,0 +1,433 @@
+{
+	"name": "pl_data_adventureworks_master",
+	"properties": {
+		"activities": [
+			{
+				"name": "act_lookup_adventure_db",
+				"type": "Lookup",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": "SELECT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME NOT IN ('database_firewall_rules','BuildVersion','ErrorLog')",
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_lkp_adventure_db_tables",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "act_ForEach",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "act_lookup_adventure_db",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('act_lookup_adventure_db').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "act_copy_sqldb",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "@concat('SELECT * FROM ', item().TABLE_SCHEMA, '.', item().TABLE_NAME)",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_azsqldb_src",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_azsqldb_trg_raw",
+									"type": "DatasetReference",
+									"parameters": {
+										"container_name": {
+											"value": "@pipeline().parameters.container_name",
+											"type": "Expression"
+										},
+										"folder_name": {
+											"value": "@concat('Raw/', pipeline().parameters.source_system_name)",
+											"type": "Expression"
+										},
+										"filename": {
+											"value": "@concat(item().TABLE_NAME, '.csv')",
+											"type": "Expression"
+										},
+										"adls_connection_url": {
+											"value": "@pipeline().globalParameters.adls_connection_url",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						},
+						{
+							"name": "act_copy_audits",
+							"type": "Copy",
+							"dependsOn": [
+								{
+									"activity": "act_copy_sqldb",
+									"dependencyConditions": [
+										"Succeeded"
+									]
+								}
+							],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "AzureSqlSource",
+									"sqlReaderQuery": {
+										"value": "SELECT\n'@{pipeline().DataFactory}' AS DataFactoryName,\n'@{pipeline().Pipeline}' AS PipelineName,\n'@{pipeline().RunId}' AS PipelineRunId,\n'@{activity('act_copy_sqldb').output.rowsRead}' AS SourceRowCount,\n'@{activity('act_copy_sqldb').output.rowsCopied}' AS RawRowCount,\n'@{if(equals(activity('act_copy_sqldb').output.RowsRead, activity('act_copy_sqldb').output.RowsCopied),'Succeeded','Failed')}' AS AuditStatus",
+										"type": "Expression"
+									},
+									"queryTimeout": "02:00:00",
+									"partitionOption": "None"
+								},
+								"sink": {
+									"type": "DelimitedTextSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "DelimitedTextWriteSettings",
+										"quoteAllText": true,
+										"fileExtension": ".txt"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_lkp_adventure_db_tables",
+									"type": "DatasetReference"
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_raw_audit",
+									"type": "DatasetReference",
+									"parameters": {
+										"audit_container": {
+											"value": "@pipeline().parameters.container_name",
+											"type": "Expression"
+										},
+										"audit_folder": {
+											"value": "@concat('Audits/', pipeline().parameters.source_system_name)",
+											"type": "Expression"
+										},
+										"audit_filename": {
+											"value": "@concat('Audit_RawTemp_',item().TABLE_NAME, '.csv')",
+											"type": "Expression"
+										},
+										"adls_connection_url": {
+											"value": "@pipeline().globalParameters.adls_connection_url",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "act_copy_audit_merge",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "act_ForEach",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": {
+								"value": "@concat('Audits/',pipeline().parameters.source_system_name)",
+								"type": "Expression"
+							},
+							"wildcardFileName": "Audit_RawTemp_*.csv",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "MergeFiles"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_audit_src",
+						"type": "DatasetReference",
+						"parameters": {
+							"audit_container": {
+								"value": "@pipeline().parameters.container_name",
+								"type": "Expression"
+							},
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_raw_audit_merge",
+						"type": "DatasetReference",
+						"parameters": {
+							"Audit_Container": {
+								"value": "@pipeline().parameters.container_name",
+								"type": "Expression"
+							},
+							"Audit_Folder": {
+								"value": "@concat('Audits/',pipeline().parameters.source_system_name)",
+								"type": "Expression"
+							},
+							"Audit_Filename": "Raw_Audits.csv",
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "act_delete_temp_audits",
+				"type": "Delete",
+				"dependsOn": [
+					{
+						"activity": "act_copy_audit_merge",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "ds_raw_audits_temp",
+						"type": "DatasetReference",
+						"parameters": {
+							"Audit_Container": {
+								"value": "@pipeline().parameters.container_name",
+								"type": "Expression"
+							},
+							"Audit_Folder": {
+								"value": "@concat('Audits/',pipeline().parameters.source_system_name)",
+								"type": "Expression"
+							},
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							}
+						}
+					},
+					"enableLogging": false,
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"wildcardFileName": "Audit_RawTemp_*",
+						"enablePartitionDiscovery": false
+					}
+				}
+			},
+			{
+				"name": "act_execute_raw_to_refined",
+				"description": "Executing pl_adventureworks_raw_to_refined pipeline for raw to refined process",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "act_delete_temp_audits",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_adventureworks_raw_to_refined",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"container": {
+							"value": "@pipeline().parameters.container_name",
+							"type": "Expression"
+						},
+						"raw_folder": {
+							"value": "@concat('Raw/',pipeline().parameters.source_system_name)",
+							"type": "Expression"
+						},
+						"refined_folder": {
+							"value": "@concat('Refined/',pipeline().parameters.source_system_name)",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "act_execute_refined_views",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "act_execute_raw_to_refined",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_synapse_views",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"viewname": {
+							"value": "@activity('act_lookup_adventure_db').output.value",
+							"type": "Expression"
+						},
+						"refined_folder_path": {
+							"value": "@concat(pipeline().globalParameters.adls_connection_url,pipeline().parameters.container_name,'/Refined/',pipeline().parameters.source_system_name,'/')",
+							"type": "Expression"
+						}
+					}
+				}
+			}
+		],
+		"parameters": {
+			"container_name": {
+				"type": "string",
+				"defaultValue": "dna"
+			},
+			"source_system_name": {
+				"type": "string",
+				"defaultValue": "AdventureWorks"
+			}
+		},
+		"folder": {
+			"name": "AdventureWorks"
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-09-24T09:27:56Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

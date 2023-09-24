@@ -1,0 +1,402 @@
+{
+	"name": "pl_pnc_synapse",
+	"properties": {
+		"activities": [
+			{
+				"name": "act_create_data_source_raw",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": {
+							"value": "@pipeline().parameters.synapse_raw_db_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "DECLARE @ds_command NVARCHAR(MAX)\r\nSET @ds_command = N'IF NOT EXISTS(SELECT * FROM sys.external_data_sources WHERE name = ''pnc_raw'')\r\nBEGIN\r\n    CREATE EXTERNAL DATA SOURCE [pnc_raw]\r\n    WITH(\r\n        LOCATION = ''abfss://dna@stocidna001dev.dfs.core.windows.net/Raw/PnC/''\r\n    )\r\nEND'\r\nEXEC sp_executesql @ds_command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_create_schema_raw",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": {
+							"value": "@pipeline().parameters.synapse_raw_db_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "DECLARE @schema_command NVARCHAR(MAX)\r\nSET @schema_command = N'\r\nIF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ''PnC'')\r\nBEGIN\r\n    EXEC(''CREATE SCHEMA PnC'')\r\nEND'\r\nEXEC sp_executesql @schema_command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_create_schema_refined",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": {
+							"value": "@pipeline().parameters.synapse_refined_db_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "DECLARE @schema_command NVARCHAR(MAX)\r\nSET @schema_command = N'\r\nIF NOT EXISTS(SELECT * FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = ''PnC'')\r\nBEGIN\r\n    EXEC(''CREATE SCHEMA PnC'')\r\nEND'\r\nEXEC sp_executesql @schema_command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_create_data_source_refined",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": {
+							"value": "@pipeline().parameters.synapse_refined_db_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "DECLARE @ds_command NVARCHAR(MAX)\r\nSET @ds_command = N'IF NOT EXISTS(SELECT * FROM sys.external_data_sources WHERE name = ''pnc_refined'')\r\nBEGIN\r\n    CREATE EXTERNAL DATA SOURCE [pnc_refined]\r\n    WITH(\r\n        LOCATION = ''abfss://dna@stocidna001dev.dfs.core.windows.net/Refined/PnC/''\r\n    )\r\nEND'\r\nEXEC sp_executesql @ds_command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_create_raw_external_tables",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "act_create_data_source_raw",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "act_create_schema_raw",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "act_create_schema_refined",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "act_create_data_source_refined",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": {
+							"value": "@pipeline().parameters.synapse_raw_db_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"parameters": [
+								{
+									"name": "TriggerTime",
+									"type": "String",
+									"value": {
+										"value": "@convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time')",
+										"type": "Expression"
+									},
+									"direction": "Input"
+								}
+							],
+							"type": "Query",
+							"text": "DECLARE @FilePath NVARCHAR(MAX) = concat(format(convert(datetime2,@TriggerTime,121), 'yyyy/'), format(convert(datetime2,@TriggerTime,121), 'MM/'), format(convert(datetime2,@TriggerTime,121), 'dd/'))\r\n\r\nDECLARE @drop_agent_table_command NVARCHAR(MAX)\r\nSET @drop_agent_table_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''Agents'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.Agents\r\nEND'\r\nEXEC sp_executesql @drop_agent_table_command\r\n\r\nDECLARE @Agents_command NVARCHAR(MAX)\r\nSET @Agents_command = N'\r\nCREATE EXTERNAL TABLE PnC.Agents\r\n(\r\n    AgentID\tINT,\r\n    FirstName NVARCHAR(4000),\r\n    LastName NVARCHAR(4000),\r\n    Email NVARCHAR(4000),\r\n    PhoneNumber NVARCHAR(4000)\r\n)\r\nWITH\r\n(\r\n    LOCATION = '''+ @FilePath + 'Agents*.csv'',\r\n    DATA_SOURCE = [pnc_raw],\r\n    FILE_FORMAT = [PNC_CSV]\r\n)'\r\nEXEC sp_executesql @Agents_command\r\n\r\nDECLARE @drop_claims_table_command NVARCHAR(MAX)\r\nSET @drop_claims_table_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''Claims'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.Claims\r\nEND'\r\nEXEC sp_executesql @drop_claims_table_command\r\n\r\nDECLARE @Claims_command NVARCHAR(MAX)\r\nSET @Claims_command = N'\r\nCREATE EXTERNAL TABLE PnC.Claims\r\n(\r\n    ClaimID\tINT,\r\n    PolicyID INT,\r\n    ClaimDate DATE,\r\n    Description\tNVARCHAR(4000),\r\n    Amount DECIMAL\r\n)\r\nWITH\r\n(\r\n    LOCATION = '''+ @FilePath + 'Claims*.csv'',\r\n    DATA_SOURCE = [pnc_raw],\r\n    FILE_FORMAT = [PNC_CSV]\r\n)'\r\nEXEC sp_executesql @Claims_command\r\n\r\nDECLARE @drop_customer_table_command NVARCHAR(MAX)\r\nSET @drop_customer_table_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''Customers'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.Customers\r\nEND'\r\nEXEC sp_executesql @drop_customer_table_command\r\n\r\nDECLARE @customers_command NVARCHAR(MAX)\r\nSET @customers_command = N'\r\nCREATE EXTERNAL TABLE PnC.Customers\r\n(\r\n    CustomerID INT,\r\n    FirstName NVARCHAR(4000),\r\n    LastName NVARCHAR(4000),\r\n    DateOfBirth\tDATE,\r\n    Email NVARCHAR(4000),\r\n    PhoneNumber\tNVARCHAR(4000)\r\n)\r\nWITH\r\n(\r\n    LOCATION = '''+ @FilePath + 'Customers*.csv'',\r\n    DATA_SOURCE = [pnc_raw],\r\n    FILE_FORMAT = [PNC_CSV]\r\n)'\r\nEXEC sp_executesql @customers_command\r\n\r\nDECLARE @drop_InsuranceCompanies_tables_command NVARCHAR(MAX)\r\nSET @drop_InsuranceCompanies_tables_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''InsuranceCompanies'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.InsuranceCompanies\r\nEND'\r\nEXEC sp_executesql @drop_InsuranceCompanies_tables_command\r\n\r\nDECLARE @InsuranceCompanies_command NVARCHAR(MAX)\r\nSET @InsuranceCompanies_command = N'\r\nCREATE EXTERNAL TABLE PnC.InsuranceCompanies\r\n(\r\n    CompanyID INT,\r\n    CompanyName\tNVARCHAR(4000),\r\n    Headquarters NVARCHAR(4000),\r\n    Website\tNVARCHAR(4000)\r\n)\r\nWITH\r\n(\r\n    LOCATION = '''+ @FilePath + 'InsuranceCompanies*.csv'',\r\n    DATA_SOURCE = [pnc_raw],\r\n    FILE_FORMAT = [PNC_CSV]\r\n)'\r\nEXEC sp_executesql @InsuranceCompanies_command\r\n\r\nDECLARE @drop_Policies_table_command NVARCHAR(MAX)\r\nSET @drop_Policies_table_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''Policies'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.Policies\r\nEND'\r\nEXEC sp_executesql @drop_Policies_table_command\r\n\r\nDECLARE @Policies_command NVARCHAR(MAX)\r\nSET @Policies_command = N'\r\nCREATE EXTERNAL TABLE PnC.Policies\r\n(\r\n    PolicyID INT,\r\n    CustomerID INT,\r\n    PolicyNumber NVARCHAR(4000),\r\n    PolicyType NVARCHAR(4000),\r\n    PolicyStartDate\tDATE,\r\n    PolicyEndDate DATE,\r\n    Premium\tDECIMAL\r\n)\r\nWITH\r\n(\r\n    LOCATION = '''+ @FilePath + 'Policies*.csv'',\r\n    DATA_SOURCE = [pnc_raw],\r\n    FILE_FORMAT = [PNC_CSV]\r\n)'\r\nEXEC sp_executesql @Policies_command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_create_refined_external_tables",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "act_create_raw_external_tables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": {
+							"value": "@pipeline().parameters.synapse_refined_db_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"parameters": [
+								{
+									"name": "TriggerTime",
+									"type": "String",
+									"value": {
+										"value": "@convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time')",
+										"type": "Expression"
+									},
+									"direction": "Input"
+								}
+							],
+							"type": "Query",
+							"text": "DECLARE @FilePath NVARCHAR(MAX) = concat(format(convert(datetime2,@TriggerTime,121), 'yyyy/'), format(convert(datetime2,@TriggerTime,121), 'MM/'), format(convert(datetime2,@TriggerTime,121), 'dd/'))\r\n\r\nDECLARE @timestamp VARCHAR(50)\r\nSET @timestamp = CONVERT(DATETIME2, @TriggerTime)\r\n\r\nDECLARE @drop_agent_table_command NVARCHAR(MAX)\r\nSET @drop_agent_table_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''Agents'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.Agents\r\nEND'\r\nEXEC sp_executesql @drop_agent_table_command\r\n\r\nDECLARE @Agents_command NVARCHAR(MAX)\r\nSET @Agents_command = N'\r\nCREATE EXTERNAL TABLE PnC.Agents\r\nWITH\r\n(\r\n    LOCATION = ''/ExternalTables/Agents/' + @timestamp + ''',\r\n    DATA_SOURCE = [refined_pnc],\r\n    FILE_FORMAT = [PNC_PARQUET]\r\n) AS \r\nSELECT \r\n    CAST(a.AgentID AS INT) AgentID,\r\n    CAST(a.FirstName AS NVARCHAR(4000)) FirstName,\r\n    CAST(a.LastName AS NVARCHAR(4000)) LastName,\r\n    CAST(a.Email AS NVARCHAR(4000)) Email,\r\n    CAST(a.PhoneNumber AS NVARCHAR(4000)) PhoneNumber\r\n    FROM OPENROWSET(\r\n        BULK '''+ @FilePath + 'Agents*.parquet'',\r\n        FORMAT = ''parquet'',\r\n        DATA_SOURCE = ''refined_pnc''\r\n    ) AS [a]'\r\nEXEC sp_executesql @Agents_command\r\n\r\n\r\nDECLARE @drop_claims_table_command NVARCHAR(MAX)\r\nSET @drop_claims_table_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''Claims'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.Claims\r\nEND'\r\nEXEC sp_executesql @drop_claims_table_command\r\n\r\nDECLARE @Claims_command NVARCHAR(MAX)\r\nSET @Claims_command = N'\r\nCREATE EXTERNAL TABLE PnC.Claims\r\nWITH\r\n(\r\n    LOCATION = ''/ExternalTables/Claims/' + @timestamp + ''',\r\n    DATA_SOURCE = [refined_pnc],\r\n    FILE_FORMAT = [PNC_PARQUET]\r\n) AS\r\nSELECT \r\n    CAST(a.ClaimID AS\tINT) ClaimID,\r\n    CAST(a.PolicyID AS INT) PolicyID,\r\n    CAST(a.ClaimDate AS DATE) ClaimDate,\r\n    CAST(a.Description AS NVARCHAR(4000)) Description,\r\n    CAST(a.Amount AS DECIMAL) Amount\r\n    FROM OPENROWSET(\r\n    BULK '''+ @FilePath + 'Claims*.parquet'',\r\n    FORMAT = ''parquet'',\r\n    DATA_SOURCE = ''refined_pnc''\r\n) AS [a]'\r\nEXEC sp_executesql @Claims_command\r\n\r\n\r\nDECLARE @drop_customer_table_command NVARCHAR(MAX)\r\nSET @drop_customer_table_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''Customers'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.Customers\r\nEND'\r\nEXEC sp_executesql @drop_customer_table_command\r\n\r\nDECLARE @customers_command NVARCHAR(MAX)\r\nSET @customers_command = N'\r\nCREATE EXTERNAL TABLE PnC.Customers\r\nWITH\r\n(\r\n    LOCATION = ''/ExternalTables/Customers/' + @timestamp + ''',\r\n    DATA_SOURCE = [refined_pnc],\r\n    FILE_FORMAT = [PNC_PARQUET]\r\n) AS \r\nSELECT\r\n    CAST(a.CustomerID AS INT) CustomerID,\r\n    CAST(a.FirstName AS NVARCHAR(4000)) FirstName,\r\n    CAST(a.LastName AS NVARCHAR(4000)) LastName,\r\n    CAST(a.DateOfBirth AS DATETIME2) DateOfBirth,\r\n    CAST(a.Email AS NVARCHAR(4000)) Email,\r\n    CAST(a.PhoneNumber AS NVARCHAR(4000)) PhoneNumber\r\n    FROM OPENROWSET(\r\n    BULK '''+ @FilePath + 'Customers*.parquet'',\r\n    FORMAT = ''parquet'',\r\n    DATA_SOURCE = ''refined_pnc''\r\n    ) AS [a]'\r\nEXEC sp_executesql @customers_command\r\n\r\n\r\nDECLARE @drop_InsuranceCompanies_tables_command NVARCHAR(MAX)\r\nSET @drop_InsuranceCompanies_tables_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''InsuranceCompanies'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.InsuranceCompanies\r\nEND'\r\nEXEC sp_executesql @drop_InsuranceCompanies_tables_command\r\n\r\nDECLARE @InsuranceCompanies_command NVARCHAR(MAX)\r\nSET @InsuranceCompanies_command = N'\r\nCREATE EXTERNAL TABLE PnC.InsuranceCompanies\r\nWITH\r\n(\r\n    LOCATION = ''/ExternalTables/InsuranceCompanies/' + @timestamp + ''',\r\n    DATA_SOURCE = [refined_pnc],\r\n    FILE_FORMAT = [PNC_PARQUET]\r\n) AS \r\nSELECT\r\n    CAST(a.CompanyID AS INT) CompanyID,\r\n    CAST(a.CompanyName AS NVARCHAR(4000)) CompanyName,\r\n    CAST(a.Headquarters AS NVARCHAR(4000)) Headquarters,\r\n    CAST(a.Website AS NVARCHAR(4000)) Website\r\n    FROM OPENROWSET(\r\n    BULK '''+ @FilePath + 'InsuranceCompanies*.parquet'',\r\n    FORMAT = ''parquet'',\r\n    DATA_SOURCE = ''refined_pnc''\r\n    ) AS [a]'\r\nEXEC sp_executesql @InsuranceCompanies_command\r\n\r\n\r\nDECLARE @drop_Policies_table_command NVARCHAR(MAX)\r\nSET @drop_Policies_table_command = N'\r\nIF EXISTS(SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = ''Policies'' AND TABLE_TYPE=''BASE TABLE'')\r\nBEGIN\r\n    DROP EXTERNAL TABLE PnC.Policies\r\nEND'\r\nEXEC sp_executesql @drop_Policies_table_command\r\n\r\nDECLARE @Policies_command NVARCHAR(MAX)\r\nSET @Policies_command = N'\r\nCREATE EXTERNAL TABLE PnC.Policies\r\nWITH\r\n(\r\n    LOCATION = ''/ExternalTables/Policies/' + @timestamp + ''',\r\n    DATA_SOURCE = [refined_pnc],\r\n    FILE_FORMAT = [PNC_PARQUET]\r\n) AS \r\nSELECT\r\n    CAST(a.PolicyID AS INT) PolicyID,\r\n    CAST(a.CustomerID AS INT) CustomerID,\r\n    CAST(a.PolicyNumber AS NVARCHAR(4000)) PolicyNumber,\r\n    CAST(a.PolicyType AS NVARCHAR(4000)) PolicyType,\r\n    CAST(a.PolicyStartDate AS DATE) PolicyStartDate,\r\n    CAST(a.PolicyEndDate AS DATE) PolicyEndDate,\r\n    CAST(a.Premium AS DECIMAL) Premium\r\n    FROM OPENROWSET(\r\n    BULK '''+ @FilePath + 'Policies*.parquet'',\r\n    FORMAT = ''parquet'',\r\n    DATA_SOURCE = ''refined_pnc''\r\n    ) AS [a]'\r\nEXEC sp_executesql @Policies_command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_script_audit_view",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "act_create_refined_external_tables",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": {
+							"value": "@pipeline().parameters.synapse_refined_db_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "Query",
+							"text": "DECLARE @AuditView_Command NVARCHAR(MAX)\r\nSET @AuditView_Command = N'\r\nCREATE OR ALTER VIEW Audits.PnC_Audits AS\r\nSELECT a.*, \r\na.filepath() as [FilePath], \r\na.filepath(1) as [Year],\r\na.filepath(2) as [Month],\r\na.filepath(3) as [Day]\r\nFROM OPENROWSET\r\n(\r\n    BULK ''/PnC/*/*/*/Raw_Audits.csv'',\r\n    DATA_SOURCE = ''audits_ds'',\r\n    FORMAT = ''CSV'',\r\n    FIELDTERMINATOR = '','', \r\n    FIRST_ROW = 2,\r\n    ROWTERMINATOR = ''\\n''\r\n)\r\nWITH\r\n(\r\n[DataFactoryName] NVARCHAR(4000),\r\n[PipelineName] NVARCHAR(4000),\r\n[PipelineRunId] NVARCHAR(4000),\r\n[SourceRowCount] NVARCHAR(4000),\r\n[RawRowCount] NVARCHAR(4000),\r\n[AuditStatus] NVARCHAR(4000)\r\n) as [a]'\r\n\r\nEXEC sp_executesql @AuditView_Command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_if_recon_matched",
+				"type": "IfCondition",
+				"dependsOn": [
+					{
+						"activity": "act_recon_checks",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"expression": {
+						"value": "@equals(activity('act_recon_checks').output.resultSets[0].rows[0].Counts, 0)",
+						"type": "Expression"
+					},
+					"ifFalseActivities": [
+						{
+							"name": "act_recon_failed",
+							"description": "Recon check failed",
+							"type": "Fail",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"message": "Recon Failed",
+								"errorCode": "Recon Failed"
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "act_recon_checks",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "act_script_audit_view",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": {
+							"value": "@pipeline().parameters.synapse_refined_db_name",
+							"type": "Expression"
+						}
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"parameters": [
+								{
+									"name": "TriggerTime",
+									"type": "String",
+									"value": {
+										"value": "@formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC','Eastern Standard Time'))",
+										"type": "Expression"
+									},
+									"direction": "Input"
+								}
+							],
+							"type": "Query",
+							"text": "DECLARE @YEAR NVARCHAR(4000) = FORMAT(CONVERT(DATETIME2, @TriggerTime, 121), 'yyyy')\r\nDECLARE @MONTH NVARCHAR(4000) = FORMAT(CONVERT(DATETIME2, @TriggerTime, 121), 'MM')\r\nDECLARE @DAY NVARCHAR(4000) = FORMAT(CONVERT(DATETIME2, @TriggerTime, 121), 'dd')\r\n\r\nDECLARE @check_command NVARCHAR(4000)\r\nSET @check_command = N'\r\nSELECT COUNT(*) AS [Counts] FROM Audits.PnC_Audits\r\nWHERE (SourceRowCount <> RawRowCount)\r\nAND [Year] = '+ @YEAR +'\r\nAND [Month] = '+ @MONTH +'\r\nAND [Day] = '+ @DAY +''\r\n\r\nEXEC sp_executesql @check_command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			}
+		],
+		"parameters": {
+			"synapse_raw_db_name": {
+				"type": "string"
+			},
+			"synapse_refined_db_name": {
+				"type": "string"
+			},
+			"raw_schema": {
+				"type": "string"
+			},
+			"refined_schema": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"counts": {
+				"type": "String"
+			},
+			"holding_value": {
+				"type": "Array"
+			}
+		},
+		"folder": {
+			"name": "PnC"
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-09-24T09:27:54Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

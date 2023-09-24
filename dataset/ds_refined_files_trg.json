@@ -1,0 +1,54 @@
+{
+	"name": "ds_refined_files_trg",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_gen2_adls",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"adls_url": {
+					"value": "@dataset().adls_connection_url",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"refined_container": {
+				"type": "string"
+			},
+			"refined_folder": {
+				"type": "string"
+			},
+			"refined_filename": {
+				"type": "string"
+			},
+			"adls_connection_url": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "AdventureWorks"
+		},
+		"annotations": [],
+		"type": "Parquet",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().refined_filename",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().refined_folder",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().refined_container",
+					"type": "Expression"
+				}
+			},
+			"compressionCodec": "snappy"
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

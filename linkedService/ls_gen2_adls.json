@@ -1,0 +1,25 @@
+{
+	"name": "ls_gen2_adls",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"adls_url": {
+				"type": "string",
+				"defaultValue": "https://stocidna001dev.dfs.core.windows.net/"
+			}
+		},
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "@{linkedService().adls_url}",
+			"accountKey": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "ls_akv",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "adls-account-key"
+			}
+		}
+	}
+}

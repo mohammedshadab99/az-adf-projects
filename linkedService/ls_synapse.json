@@ -1,0 +1,27 @@
+{
+	"name": "ls_synapse",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"db_name": {
+				"type": "string",
+				"defaultValue": "refined"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDW",
+		"typeProperties": {
+			"connectionString": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=syncidna001dev-ondemand.sql.azuresynapse.net;Initial Catalog=@{linkedService().db_name}",
+			"servicePrincipalId": "cb63ec49-d796-479b-9599-006dad11cd53",
+			"servicePrincipalKey": {
+				"type": "AzureKeyVaultSecret",
+				"store": {
+					"referenceName": "ls_akv",
+					"type": "LinkedServiceReference"
+				},
+				"secretName": "dev-devops-lz-client-secret"
+			},
+			"tenant": "75c0b612-3aa7-4c9b-8ff1-87eb24af525c"
+		}
+	}
+}

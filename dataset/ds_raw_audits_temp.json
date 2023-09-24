@@ -1,0 +1,45 @@
+{
+	"name": "ds_raw_audits_temp",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_gen2_adls",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"adls_url": {
+					"value": "@dataset().adls_connection_url",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"Audit_Container": {
+				"type": "string"
+			},
+			"Audit_Folder": {
+				"type": "string"
+			},
+			"adls_connection_url": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "AdventureWorks"
+		},
+		"annotations": [],
+		"type": "Binary",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"folderPath": {
+					"value": "@dataset().Audit_Folder",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().Audit_Container",
+					"type": "Expression"
+				}
+			}
+		}
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

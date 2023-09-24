@@ -1,0 +1,57 @@
+{
+	"name": "ds_raw_audit_merge",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_gen2_adls",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"adls_url": {
+					"value": "@dataset().adls_connection_url",
+					"type": "Expression"
+				}
+			}
+		},
+		"parameters": {
+			"Audit_Container": {
+				"type": "string"
+			},
+			"Audit_Folder": {
+				"type": "string"
+			},
+			"Audit_Filename": {
+				"type": "string"
+			},
+			"adls_connection_url": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "AdventureWorks"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().Audit_Filename",
+					"type": "Expression"
+				},
+				"folderPath": {
+					"value": "@dataset().Audit_Folder",
+					"type": "Expression"
+				},
+				"fileSystem": {
+					"value": "@dataset().Audit_Container",
+					"type": "Expression"
+				}
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

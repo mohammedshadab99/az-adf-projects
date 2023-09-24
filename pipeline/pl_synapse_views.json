@@ -1,0 +1,152 @@
+{
+	"name": "pl_synapse_views",
+	"properties": {
+		"activities": [
+			{
+				"name": "act_synapse_prerequisites",
+				"type": "Script",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": "refined"
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"parameters": [
+								{
+									"name": "schema",
+									"type": "String",
+									"value": {
+										"value": "IF NOT EXISTS (\n    SELECT * FROM INFORMATION_SCHEMA.SCHEMATA\n    WHERE SCHEMA_NAME = '@{variables('schema_name')}'\n)\nBEGIN\n    EXEC ('CREATE SCHEMA @{variables('schema_name')}')\nEND",
+										"type": "Expression"
+									},
+									"direction": "Input"
+								},
+								{
+									"name": "external_file_format",
+									"type": "String",
+									"value": {
+										"value": "IF NOT EXISTS(\n    SELECT * FROM sys.external_file_formats\n    WHERE name = 'dna_adventureworks_parquet'\n)\nBEGIN\n    CREATE EXTERNAL FILE FORMAT dna_adventureworks_parquet\n    WITH\n    (\n        FORMAT_TYPE = PARQUET,\n        DATA_COMPRESSION='org.apache.hadoop.io.compress.SnappyCodec'\n    )\nEND",
+										"type": "Expression"
+									},
+									"direction": "Input"
+								}
+							],
+							"type": "NonQuery",
+							"text": "EXEC sp_executesql @schema\r\nEXEC sp_executesql @external_file_format"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_script_raw_views",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "act_synapse_prerequisites",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": "raw"
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "DECLARE  @Address_Command NVARCHAR(MAX)\r\nSET @Address_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[Address] AS\r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''Address.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    AddressID INT,\r\n    AddressLine1 NVARCHAR(4000),\r\n    AddressLine2 NVARCHAR(4000),\r\n    City NVARCHAR(4000),\r\n    StateProvince NVARCHAR(4000),\r\n    CountryRegion NVARCHAR(4000),\r\n    PostalCode NVARCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @Address_Command\r\n\r\nDECLARE @Customer_Command NVARCHAR(MAX)\r\nSET @Customer_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[Customer] AS\r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''Customer.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    CustomerID INT,\r\n    NameStyle BIT,\r\n    Title NVARCHAR(4000),\r\n    FirstName NVARCHAR(4000),\r\n    MiddleName NVARCHAR(4000),\r\n    LastName NVARCHAR(4000),\r\n    Suffix NVARCHAR(4000),\r\n    CompanyName NVARCHAR(4000),\r\n    SalesPerson NVARCHAR(4000),\r\n    EmailAddress NVARCHAR(4000),\r\n    Phone NVARCHAR(4000),\r\n    PasswordHash VARCHAR(4000),\r\n    PasswordSalt VARCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @Customer_Command\r\n\r\nDECLARE @CustomerAddress_Command NVARCHAR(MAX)\r\nSET @CustomerAddress_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[CustomerAddress] AS\r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''CustomerAddress.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    CustomerID INT,\r\n    AddressID INT,\r\n    AddressType NVARCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @CustomerAddress_Command\r\n\r\nDECLARE @Product_Command NVARCHAR(MAX)\r\nSET @Product_Command = N'\r\nCREATE OR ALTER VIEW [AdventureWorks].[Product] AS\r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''Product.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    ProductID INT,\r\n    Name NVARCHAR(4000),\r\n    ProductNumber NVARCHAR(4000),\r\n    Color NVARCHAR(4000),\r\n    StandardCost MONEY,\r\n    ListPrice MONEY,\r\n    Size NVARCHAR(4000),\r\n    Weight DECIMAL,\r\n    ProductCategoryID INT,\r\n    ProductModelID INT,\r\n    SellStartDate DATETIME2,\r\n    SellEndDate DATETIME2,\r\n    DiscontinuedDate DATETIME2,\r\n    ThumbNailPhoto VARCHAR(MAX),\r\n    ThumbnailPhotoFileName NVARCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @Product_Command\r\n\r\nDECLARE @ProductCategory_Command NVARCHAR(MAX)\r\nSET @ProductCategory_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[ProductCategory] AS\r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''ProductCategory.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    ProductCategoryID INT,\r\n    ParentProductCategoryID INT,\r\n    Name NVARCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @ProductCategory_Command\r\n\r\n\r\nDECLARE @ProductDescription_Command NVARCHAR(MAX)\r\nSET @ProductDescription_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[ProductDescription] AS\r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''ProductDescription.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    ProductDescriptionID INT,\r\n    Description NVARCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @ProductDescription_Command\r\n\r\nDECLARE @ProductModel_Command NVARCHAR(MAX)\r\nSET @ProductModel_Command = N'\r\nCREATE OR ALTER VIEW [AdventureWorks].[ProductModel] \r\nAS \r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''ProductModel.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    ProductModelID INT,\r\n    Name NVARCHAR(4000),\r\n    CatalogDescription XML,\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @ProductModel_Command\r\n\r\nDECLARE @ProductModelProductDescription_Command NVARCHAR(MAX)\r\nSET @ProductModelProductDescription_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[ProductModelProductDescription] \r\nAS \r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''ProductModelProductDescription.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    ProductModelID INT,\r\n    ProductDescriptionID INT,\r\n    Culture NCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n    ) AS A'\r\nEXEC sp_executesql @ProductModelProductDescription_Command\r\n\r\nDECLARE @SalesOrderDetail_Command NVARCHAR(MAX)\r\nSET @SalesOrderDetail_Command = N'\r\nCREATE OR ALTER VIEW [AdventureWorks].[SalesOrderDetail] \r\nAS \r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''SalesOrderDetail.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR = '','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    SalesOrderID INT,\r\n    SalesOrderDetailID INT,\r\n    OrderQty SMALLINT,\r\n    ProductID INT,\r\n    UnitPrice MONEY,\r\n    UnitPriceDiscount MONEY,\r\n    LineTotal NUMERIC,\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @SalesOrderDetail_Command\r\n\r\nDECLARE @SalesOrderHeader_Command NVARCHAR(MAX)\r\nSET @SalesOrderHeader_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[SalesOrderHeader] \r\nAS \r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''SalesOrderHeader.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    SalesOrderID INT,\r\n    RevisionNumber TINYINT,\r\n    OrderDate DATETIME2,\r\n    DueDate DATETIME2,\r\n    ShipDate DATETIME2,\r\n    Status TINYINT,\r\n    OnlineOrderFlag BIT,\r\n    SalesOrderNumber NVARCHAR(4000),\r\n    PurchaseOrderNumber NVARCHAR(4000),\r\n    AccountNumber NVARCHAR(4000),\r\n    CustomerID INT,\r\n    ShipToAddressID INT,\r\n    BillToAddressID INT,\r\n    ShipMethod NVARCHAR(4000),\r\n    CreditCardApprovalCode VARCHAR(4000),\r\n    SubTotal MONEY,\r\n    TaxAmt MONEY,\r\n    Freight MONEY,\r\n    TotalDue MONEY,\r\n    Comment NVARCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @SalesOrderHeader_Command\r\n\r\nDECLARE @vGetAllCategories_Command NVARCHAR(MAX)\r\nSET @vGetAllCategories_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[vGetAllCategories] \r\nAS \r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''vGetAllCategories.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    ParentProductCategoryName NVARCHAR(4000),\r\n    ProductCategoryName NVARCHAR(4000),\r\n    ProductCategoryID INT\r\n) AS A'\r\nEXEC sp_executesql @vGetAllCategories_Command\r\n\r\nDECLARE @vProductAndDescription_Command NVARCHAR(MAX)\r\nSET @vProductAndDescription_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[vProductAndDescription] \r\nAS \r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''vProductAndDescription.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    ProductID INT,\r\n    Name NVARCHAR(4000),\r\n    ProductModel NVARCHAR(4000),\r\n    Culture NCHAR(4000),\r\n    Description NVARCHAR(4000)\r\n) AS A'\r\nEXEC sp_executesql @vProductAndDescription_Command\r\n\r\nDECLARE @vProductModelCatalogDescription_Command NVARCHAR(MAX)\r\nSET @vProductModelCatalogDescription_Command = N'CREATE OR ALTER VIEW [AdventureWorks].[vProductModelCatalogDescription] \r\nAS \r\nSELECT * \r\nFROM OPENROWSET(\r\n        BULK ''vProductModelCatalogDescription.csv'',\r\n        DATA_SOURCE = ''adventureworks_raw'',\r\n        FORMAT = ''CSV'', \r\n        FIELDTERMINATOR ='','', \r\n        FIRST_ROW = 2,\r\n        ROWTERMINATOR = ''\\n''\r\n    )\r\nWITH(\r\n    ProductModelID INT,\r\n    Name NVARCHAR(4000),\r\n    Summary NVARCHAR(4000),\r\n    Manufacturer NVARCHAR(4000),\r\n    Copyright NVARCHAR(4000),\r\n    ProductURL NVARCHAR(4000),\r\n    WarrantyPeriod NVARCHAR(4000),\r\n    WarrantyDescription NVARCHAR(4000),\r\n    NoOfYears NVARCHAR(4000),\r\n    MaintenanceDescription NVARCHAR(4000),\r\n    Wheel NVARCHAR(4000),\r\n    Saddle NVARCHAR(4000),\r\n    Pedal NVARCHAR(4000),\r\n    BikeFrame NVARCHAR(4000),\r\n    Crankset NVARCHAR(4000),\r\n    PictureAngle NVARCHAR(4000),\r\n    PictureSize NVARCHAR(4000),\r\n    ProductPhotoID NVARCHAR(4000),\r\n    Material NVARCHAR(4000),\r\n    Color NVARCHAR(4000),\r\n    ProductLine NVARCHAR(4000),\r\n    Style NVARCHAR(4000),\r\n    RiderExperience NVARCHAR(4000),\r\n    rowguid UNIQUEIDENTIFIER,\r\n    ModifiedDate DATETIME2\r\n) AS A'\r\nEXEC sp_executesql @vProductModelCatalogDescription_Command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			},
+			{
+				"name": "act_script_refined_views",
+				"type": "Script",
+				"dependsOn": [
+					{
+						"activity": "act_script_raw_views",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"linkedServiceName": {
+					"referenceName": "ls_synapse",
+					"type": "LinkedServiceReference",
+					"parameters": {
+						"db_name": "refined"
+					}
+				},
+				"typeProperties": {
+					"scripts": [
+						{
+							"type": "NonQuery",
+							"text": "DECLARE @Address_Command NVARCHAR(MAX)\r\nSET @Address_Command = N'CREATE OR ALTER VIEW AdventureWorks.Address AS \r\nSELECT * \r\nFROM\r\nOPENROWSET\r\n(\r\n    BULK ''Address.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n) AS A'\r\nEXEC sp_executesql @Address_Command\r\n\r\nDECLARE @Customer_Command NVARCHAR(MAX)\r\nSET @Customer_Command = N'CREATE OR ALTER VIEW AdventureWorks.Customer \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''Customer.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @Customer_Command\r\n\r\nDECLARE @ProductModel_Command NVARCHAR(MAX)\r\nSET @ProductModel_Command = N'CREATE OR ALTER VIEW AdventureWorks.ProductModel \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''ProductModel.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @ProductModel_Command\r\n\r\nDECLARE @vProductModelCatalogDescription_Command NVARCHAR(MAX)\r\nSET @vProductModelCatalogDescription_Command = N'CREATE OR ALTER VIEW AdventureWorks.vProductModelCatalogDescription \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''vProductModelCatalogDescription.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @vProductModelCatalogDescription_Command\r\n\r\nDECLARE @ProductDescription_Command NVARCHAR(MAX)\r\nSET @ProductDescription_Command = N'CREATE OR ALTER VIEW AdventureWorks.ProductDescription \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''ProductDescription.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @ProductDescription_Command\r\n\r\nDECLARE @Product_Command NVARCHAR(MAX)\r\nSET @Product_Command = N'CREATE OR ALTER VIEW AdventureWorks.Product \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''Product.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @Product_Command\r\n\r\nDECLARE @ProductModelProductDescription_Command NVARCHAR(MAX)\r\nSET @ProductModelProductDescription_Command = N'CREATE OR ALTER VIEW AdventureWorks.ProductModelProductDescription \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''ProductModelProductDescription.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @ProductModelProductDescription_Command\r\n\r\nDECLARE @vProductAndDescription_Command NVARCHAR(MAX)\r\nSET @vProductAndDescription_Command = N'CREATE OR ALTER VIEW AdventureWorks.vProductAndDescription \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''vProductAndDescription.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @vProductAndDescription_Command\r\n\r\nDECLARE @ProductCatery_Command NVARCHAR(MAX)\r\nSET @ProductCatery_Command = N'CREATE OR ALTER VIEW AdventureWorks.ProductCategory \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''ProductCategory.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @ProductCatery_Command\r\n\r\nDECLARE @vGetAllCateries_Command NVARCHAR(MAX)\r\nSET @vGetAllCateries_Command = N'CREATE OR ALTER VIEW AdventureWorks.vGetAllCategories \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''vGetAllCategories.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @vGetAllCateries_Command\r\n\r\nDECLARE @CustomerAddress_Command NVARCHAR(MAX)\r\nSET @CustomerAddress_Command = N'CREATE OR ALTER VIEW AdventureWorks.CustomerAddress \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''CustomerAddress.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @CustomerAddress_Command\r\n\r\nDECLARE @SalesOrderDetail_Command NVARCHAR(MAX)\r\nSET @SalesOrderDetail_Command = N'CREATE OR ALTER VIEW AdventureWorks.SalesOrderDetail \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''SalesOrderDetail.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @SalesOrderDetail_Command\r\n\r\nDECLARE @SalesOrderHeader_Command NVARCHAR(MAX)\r\nSET @SalesOrderHeader_Command = N'CREATE OR ALTER VIEW AdventureWorks.SalesOrderHeader \r\nAS \r\nSELECT * \r\nFROM\r\nOPENROWSET(\r\n    BULK ''SalesOrderHeader.parquet'',\r\n    FORMAT=''PARQUET'',\r\n    DATA_SOURCE=''adventureworks_refined''\r\n    ) AS A'\r\nEXEC sp_executesql @SalesOrderHeader_Command"
+						}
+					],
+					"scriptBlockExecutionTimeout": "02:00:00"
+				}
+			}
+		],
+		"parameters": {
+			"viewname": {
+				"type": "array"
+			},
+			"refined_folder_path": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"schema_name": {
+				"type": "String",
+				"defaultValue": "AdventureWorks"
+			},
+			"data_source": {
+				"type": "String",
+				"defaultValue": "AdventureWorks_Refined"
+			}
+		},
+		"folder": {
+			"name": "AdventureWorks"
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-09-24T09:27:54Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

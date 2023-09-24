@@ -1,0 +1,21 @@
+{
+	"name": "ds_lkp_adventure_db_tables",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "ls_azure_sql_db",
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"azure_sql_db_name": "azsqldbformula1.database.windows.net",
+				"azure_sql_username": "mshadab",
+				"azure_sql_password": "Mohd@2023"
+			}
+		},
+		"folder": {
+			"name": "AdventureWorks"
+		},
+		"annotations": [],
+		"type": "AzureSqlTable",
+		"schema": []
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}

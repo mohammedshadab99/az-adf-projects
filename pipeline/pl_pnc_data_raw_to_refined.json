@@ -1,0 +1,184 @@
+{
+	"name": "pl_pnc_data_raw_to_refined",
+	"properties": {
+		"activities": [
+			{
+				"name": "act_for_each_raw_files",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "act_get_raw_files",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('act_get_raw_files').output.childItems",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "act_copy_raw_to_refined",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_raw_files",
+									"type": "DatasetReference",
+									"parameters": {
+										"raw_container": {
+											"value": "@pipeline().parameters.raw_container",
+											"type": "Expression"
+										},
+										"raw_folder": {
+											"value": "@pipeline().parameters.raw_folder_format",
+											"type": "Expression"
+										},
+										"raw_filename": {
+											"value": "@item().name",
+											"type": "Expression"
+										},
+										"adls_connection_url": {
+											"value": "@pipeline().globalParameters.adls_connection_url",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_refined_sink",
+									"type": "DatasetReference",
+									"parameters": {
+										"refined_container": {
+											"value": "@pipeline().parameters.raw_container",
+											"type": "Expression"
+										},
+										"refined_folder": {
+											"value": "@pipeline().parameters.refined_folder_format",
+											"type": "Expression"
+										},
+										"refined_filename": {
+											"value": "@concat(split(item().name, '_')[0], '_', pipeline().parameters.filename_format, '.parquet')",
+											"type": "Expression"
+										},
+										"adls_connection_url": {
+											"value": "@pipeline().globalParameters.adls_connection_url",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "act_get_raw_files",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "ds_get_raw_files",
+						"type": "DatasetReference",
+						"parameters": {
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							},
+							"raw_container": {
+								"value": "@pipeline().parameters.raw_container",
+								"type": "Expression"
+							},
+							"raw_folder": {
+								"value": "@pipeline().parameters.raw_folder_format",
+								"type": "Expression"
+							}
+						}
+					},
+					"fieldList": [
+						"childItems"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"raw_container": {
+				"type": "string"
+			},
+			"raw_folder_format": {
+				"type": "string"
+			},
+			"filename_format": {
+				"type": "string"
+			},
+			"refined_folder_format": {
+				"type": "string"
+			}
+		},
+		"folder": {
+			"name": "PnC"
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-09-24T09:27:55Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}
