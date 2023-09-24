@@ -3,7 +3,13 @@
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "ls_synapse",
-			"type": "LinkedServiceReference"
+			"type": "LinkedServiceReference",
+			"parameters": {
+				"db_name": "refined"
+			}
+		},
+		"folder": {
+			"name": "S3_to_Synapse_Migration"
 		},
 		"annotations": [],
 		"type": "AzureSqlDWTable",
