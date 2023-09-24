@@ -1,0 +1,6 @@
+{
+	"adls_connection_url": {
+		"type": "string",
+		"value": "https://stocidna001dev.dfs.core.windows.net/"
+	}
+}

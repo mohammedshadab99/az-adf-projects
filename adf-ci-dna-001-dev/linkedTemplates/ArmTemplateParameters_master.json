@@ -1,0 +1,51 @@
+{
+	"$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"value": "adf-ci-dna-001-dev"
+		},
+		"ls_adls_connectionString": {
+			"value": ""
+		},
+		"ls_adls_gen2_accountKey": {
+			"value": ""
+		},
+		"ls_aws_s3_secretAccessKey": {
+			"value": ""
+		},
+		"ls_azure_sql_db_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().azure_sql_db_name};Initial Catalog=AdventureWorks;User ID=@{linkedService().azure_sql_username};Password=@{linkedService().azure_sql_password}"
+		},
+		"ls_synapse_connectionString": {
+			"value": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=syncidna001dev-ondemand.sql.azuresynapse.net;Initial Catalog=@{linkedService().db_name}"
+		},
+		"ls_adls_gen2_properties_typeProperties_url": {
+			"value": "https://mssistoragegen2.dfs.core.windows.net"
+		},
+		"ls_akv_properties_typeProperties_baseUrl": {
+			"value": "https://akvcidna001dev.vault.azure.net/"
+		},
+		"ls_aws_s3_properties_typeProperties_accessKeyId": {
+			"value": "AKIAY4SG3XDOFEGKR5TG"
+		},
+		"ls_gen2_adls_properties_typeProperties_url": {
+			"value": "@{linkedService().adls_url}"
+		},
+		"ls_synapse_properties_typeProperties_servicePrincipalId": {
+			"value": "cb63ec49-d796-479b-9599-006dad11cd53"
+		},
+		"ls_synapse_properties_typeProperties_tenant": {
+			"value": "75c0b612-3aa7-4c9b-8ff1-87eb24af525c"
+		},
+		"default_properties_adls_connection_url_value": {
+			"value": "https://stocidna001dev.dfs.core.windows.net/"
+		},
+		"containerUri": {
+			"value": ""
+		},
+		"containerSasToken": {
+			"value": ""
+		}
+	}
+}
