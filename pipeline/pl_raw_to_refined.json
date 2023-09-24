@@ -417,6 +417,9 @@
 				"type": "string"
 			}
 		},
+		"folder": {
+			"name": "S3_to_Synapse_Migration"
+		},
 		"annotations": []
 	}
 }
