@@ -1,5 +1,5 @@
 {
-	"name": "ds_get_raw_files",
+	"name": "ds_pnc_other_tables_sink",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "ls_gen2_adls",
@@ -15,18 +15,28 @@
 			"adls_connection_url": {
 				"type": "string"
 			},
-			"raw_container": {
-				"type": "string"
-			},
 			"raw_folder": {
 				"type": "string"
+			},
+			"raw_filename": {
+				"type": "string"
+			},
+			"raw_container": {
+				"type": "string"
 			}
+		},
+		"folder": {
+			"name": "PnC"
 		},
 		"annotations": [],
 		"type": "DelimitedText",
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().raw_filename",
+					"type": "Expression"
+				},
 				"folderPath": {
 					"value": "@dataset().raw_folder",
 					"type": "Expression"

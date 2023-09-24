@@ -1,0 +1,735 @@
+{
+	"name": "pl_pnc_data_master",
+	"properties": {
+		"activities": [
+			{
+				"name": "act_lkp_pnc_database",
+				"type": "Lookup",
+				"dependsOn": [
+					{
+						"activity": "act_set_raw_folder_format",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "act_set_refined_folder_format",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					},
+					{
+						"activity": "act_set_filename_format",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureSqlSource",
+						"sqlReaderQuery": {
+							"value": "SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA='@{pipeline().parameters.db_schema}'",
+							"type": "Expression"
+						},
+						"queryTimeout": "02:00:00",
+						"partitionOption": "None"
+					},
+					"dataset": {
+						"referenceName": "ds_lkp_pnc_db",
+						"type": "DatasetReference"
+					},
+					"firstRowOnly": false
+				}
+			},
+			{
+				"name": "act_for_each_table",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "act_lkp_pnc_database",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('act_lkp_pnc_database').output.value",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "act_switch_tables",
+							"type": "Switch",
+							"dependsOn": [],
+							"userProperties": [],
+							"typeProperties": {
+								"on": {
+									"value": "@item().TABLE_NAME",
+									"type": "Expression"
+								},
+								"cases": [
+									{
+										"value": "Customers",
+										"activities": [
+											{
+												"name": "act_copy_customers_table",
+												"type": "Copy",
+												"dependsOn": [],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "AzureSqlSource",
+														"sqlReaderQuery": {
+															"value": "SELECT CustomerID, FirstName, LastName,DateOfBirth,  NULL AS Email,  NULL AS PhoneNumber FROM [PnC].[Customers]",
+															"type": "Expression"
+														},
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"sink": {
+														"type": "DelimitedTextSink",
+														"storeSettings": {
+															"type": "AzureBlobFSWriteSettings"
+														},
+														"formatSettings": {
+															"type": "DelimitedTextWriteSettings",
+															"quoteAllText": true,
+															"fileExtension": ".txt"
+														}
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "ds_pnc_source_raw",
+														"type": "DatasetReference"
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "ds_pnc_customer_sink",
+														"type": "DatasetReference",
+														"parameters": {
+															"container_name": {
+																"value": "@pipeline().parameters.adls_container",
+																"type": "Expression"
+															},
+															"folder_path": {
+																"value": "@variables('raw_folder')",
+																"type": "Expression"
+															},
+															"filename": {
+																"value": "@concat('Customers', '_', variables('filename_format'),'.csv')",
+																"type": "Expression"
+															},
+															"adls_connection_url": {
+																"value": "@pipeline().globalParameters.adls_connection_url",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											},
+											{
+												"name": "act_copy_raw_customer_audits",
+												"type": "Copy",
+												"dependsOn": [
+													{
+														"activity": "act_copy_customers_table",
+														"dependencyConditions": [
+															"Succeeded"
+														]
+													}
+												],
+												"policy": {
+													"timeout": "0.12:00:00",
+													"retry": 0,
+													"retryIntervalInSeconds": 30,
+													"secureOutput": false,
+													"secureInput": false
+												},
+												"userProperties": [],
+												"typeProperties": {
+													"source": {
+														"type": "SqlDWSource",
+														"sqlReaderQuery": {
+															"value": "SELECT\n'@{pipeline().DataFactory}' AS DataFactoryName,\n'@{pipeline().Pipeline}' AS PipelineName,\n'@{pipeline().RunId}' AS PipelineRunId,\n'@{activity('act_copy_customers_table').output.rowsRead}' AS SourceRowCount,\n'@{activity('act_copy_customers_table').output.rowsCopied}' AS RawRowCount,\n'@{if(equals(activity('act_copy_customers_table').output.rowsRead, activity('act_copy_customers_table').output.rowsCopied), 'Succeeded', 'Failed')}' AS AuditStatus",
+															"type": "Expression"
+														},
+														"queryTimeout": "02:00:00",
+														"partitionOption": "None"
+													},
+													"sink": {
+														"type": "DelimitedTextSink",
+														"storeSettings": {
+															"type": "AzureBlobFSWriteSettings"
+														},
+														"formatSettings": {
+															"type": "DelimitedTextWriteSettings",
+															"quoteAllText": true,
+															"fileExtension": ".txt"
+														}
+													},
+													"enableStaging": false,
+													"translator": {
+														"type": "TabularTranslator",
+														"typeConversion": true,
+														"typeConversionSettings": {
+															"allowDataTruncation": true,
+															"treatBooleanAsNumber": false
+														}
+													}
+												},
+												"inputs": [
+													{
+														"referenceName": "ds_syn_audit_src",
+														"type": "DatasetReference",
+														"parameters": {
+															"db_name": {
+																"value": "@pipeline().parameters.synapse_refined_dbname",
+																"type": "Expression"
+															}
+														}
+													}
+												],
+												"outputs": [
+													{
+														"referenceName": "ds_raw_audit",
+														"type": "DatasetReference",
+														"parameters": {
+															"audit_container": {
+																"value": "@pipeline().parameters.adls_container",
+																"type": "Expression"
+															},
+															"audit_folder": {
+																"value": "@concat('Audits/', pipeline().parameters.source_system_name, '/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+																"type": "Expression"
+															},
+															"audit_filename": {
+																"value": "@concat(item().TABLE_NAME, '_audit_temp.csv')",
+																"type": "Expression"
+															},
+															"adls_connection_url": {
+																"value": "@pipeline().globalParameters.adls_connection_url",
+																"type": "Expression"
+															}
+														}
+													}
+												]
+											}
+										]
+									}
+								],
+								"defaultActivities": [
+									{
+										"name": "act_copy_tables",
+										"type": "Copy",
+										"dependsOn": [],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "AzureSqlSource",
+												"sqlReaderQuery": {
+													"value": "SELECT * FROM @{pipeline().parameters.db_name}.@{pipeline().parameters.db_schema}.@{item().TABLE_NAME}",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"sink": {
+												"type": "DelimitedTextSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings"
+												},
+												"formatSettings": {
+													"type": "DelimitedTextWriteSettings",
+													"quoteAllText": true,
+													"fileExtension": ".txt"
+												}
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "ds_lkp_pnc_db",
+												"type": "DatasetReference"
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "ds_pnc_other_tables_sink",
+												"type": "DatasetReference",
+												"parameters": {
+													"adls_connection_url": {
+														"value": "@pipeline().globalParameters.adls_connection_url",
+														"type": "Expression"
+													},
+													"raw_folder": {
+														"value": "@variables('raw_folder')",
+														"type": "Expression"
+													},
+													"raw_filename": {
+														"value": "@concat(item().TABLE_NAME, '_', variables('filename_format'),'.csv')",
+														"type": "Expression"
+													},
+													"raw_container": {
+														"value": "@pipeline().parameters.adls_container",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									},
+									{
+										"name": "act_copy_raw_audits",
+										"type": "Copy",
+										"dependsOn": [
+											{
+												"activity": "act_copy_tables",
+												"dependencyConditions": [
+													"Succeeded"
+												]
+											}
+										],
+										"policy": {
+											"timeout": "0.12:00:00",
+											"retry": 0,
+											"retryIntervalInSeconds": 30,
+											"secureOutput": false,
+											"secureInput": false
+										},
+										"userProperties": [],
+										"typeProperties": {
+											"source": {
+												"type": "SqlDWSource",
+												"sqlReaderQuery": {
+													"value": "SELECT\n'@{pipeline().DataFactory}' AS DataFactoryName,\n'@{pipeline().Pipeline}' AS PipelineName,\n'@{pipeline().RunId}' AS PipelineRunId,\n'@{activity('act_copy_tables').output.rowsRead}' AS SourceRowCount,\n'@{activity('act_copy_tables').output.rowsCopied}' AS RawRowCount,\n'@{if(equals(activity('act_copy_tables').output.rowsRead, activity('act_copy_tables').output.rowsCopied), 'Succeeded', 'Failed')}' AS AuditStatus",
+													"type": "Expression"
+												},
+												"queryTimeout": "02:00:00",
+												"partitionOption": "None"
+											},
+											"sink": {
+												"type": "DelimitedTextSink",
+												"storeSettings": {
+													"type": "AzureBlobFSWriteSettings"
+												},
+												"formatSettings": {
+													"type": "DelimitedTextWriteSettings",
+													"quoteAllText": true,
+													"fileExtension": ".txt"
+												}
+											},
+											"enableStaging": false,
+											"translator": {
+												"type": "TabularTranslator",
+												"typeConversion": true,
+												"typeConversionSettings": {
+													"allowDataTruncation": true,
+													"treatBooleanAsNumber": false
+												}
+											}
+										},
+										"inputs": [
+											{
+												"referenceName": "ds_syn_audit_src",
+												"type": "DatasetReference",
+												"parameters": {
+													"db_name": {
+														"value": "@pipeline().parameters.synapse_refined_dbname",
+														"type": "Expression"
+													}
+												}
+											}
+										],
+										"outputs": [
+											{
+												"referenceName": "ds_raw_audit",
+												"type": "DatasetReference",
+												"parameters": {
+													"audit_container": {
+														"value": "@pipeline().parameters.adls_container",
+														"type": "Expression"
+													},
+													"audit_folder": {
+														"value": "@concat('Audits/', pipeline().parameters.source_system_name, '/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+														"type": "Expression"
+													},
+													"audit_filename": {
+														"value": "@concat(item().TABLE_NAME, '_audit_temp.csv')",
+														"type": "Expression"
+													},
+													"adls_connection_url": {
+														"value": "@pipeline().globalParameters.adls_connection_url",
+														"type": "Expression"
+													}
+												}
+											}
+										]
+									}
+								]
+							}
+						}
+					]
+				}
+			},
+			{
+				"name": "act_set_raw_folder_format",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "raw_folder",
+					"value": {
+						"value": "@concat('Raw/',pipeline().parameters.source_system_name, '/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "act_set_refined_folder_format",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "refined_folder",
+					"value": {
+						"value": "@concat('Refined/',pipeline().parameters.source_system_name, '/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "act_set_filename_format",
+				"type": "SetVariable",
+				"dependsOn": [],
+				"policy": {
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"variableName": "filename_format",
+					"value": {
+						"value": "@formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyyMMdd')\n\n",
+						"type": "Expression"
+					}
+				}
+			},
+			{
+				"name": "act_execute_raw_to_refined",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "act_delete_audti_temp",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_pnc_data_raw_to_refined",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"raw_container": {
+							"value": "@pipeline().parameters.adls_container",
+							"type": "Expression"
+						},
+						"raw_folder_format": {
+							"value": "@variables('raw_folder')",
+							"type": "Expression"
+						},
+						"filename_format": {
+							"value": "@variables('filename_format')",
+							"type": "Expression"
+						},
+						"refined_folder_format": {
+							"value": "@variables('refined_folder')",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "act_execute_pnc_synapse",
+				"type": "ExecutePipeline",
+				"dependsOn": [
+					{
+						"activity": "act_execute_raw_to_refined",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"pipeline": {
+						"referenceName": "pl_pnc_synapse",
+						"type": "PipelineReference"
+					},
+					"waitOnCompletion": true,
+					"parameters": {
+						"synapse_raw_db_name": {
+							"value": "@pipeline().parameters.synapse_raw_dbname",
+							"type": "Expression"
+						},
+						"synapse_refined_db_name": {
+							"value": "@pipeline().parameters.synapse_refined_dbname",
+							"type": "Expression"
+						},
+						"raw_schema": {
+							"value": "@pipeline().parameters.db_schema",
+							"type": "Expression"
+						},
+						"refined_schema": {
+							"value": "@pipeline().parameters.db_schema",
+							"type": "Expression"
+						}
+					}
+				}
+			},
+			{
+				"name": "act_audit_merge",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "act_for_each_table",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "DelimitedTextSource",
+						"storeSettings": {
+							"type": "AzureBlobFSReadSettings",
+							"recursive": true,
+							"wildcardFolderPath": {
+								"value": "@concat('Audits/', pipeline().parameters.source_system_name, '/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+								"type": "Expression"
+							},
+							"wildcardFileName": "*_audit_temp.csv",
+							"enablePartitionDiscovery": false
+						},
+						"formatSettings": {
+							"type": "DelimitedTextReadSettings"
+						}
+					},
+					"sink": {
+						"type": "DelimitedTextSink",
+						"storeSettings": {
+							"type": "AzureBlobFSWriteSettings",
+							"copyBehavior": "MergeFiles"
+						},
+						"formatSettings": {
+							"type": "DelimitedTextWriteSettings",
+							"quoteAllText": true,
+							"fileExtension": ".txt"
+						}
+					},
+					"enableStaging": false,
+					"translator": {
+						"type": "TabularTranslator",
+						"typeConversion": true,
+						"typeConversionSettings": {
+							"allowDataTruncation": true,
+							"treatBooleanAsNumber": false
+						}
+					}
+				},
+				"inputs": [
+					{
+						"referenceName": "ds_audit_src",
+						"type": "DatasetReference",
+						"parameters": {
+							"audit_container": {
+								"value": "@pipeline().parameters.adls_container",
+								"type": "Expression"
+							},
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							}
+						}
+					}
+				],
+				"outputs": [
+					{
+						"referenceName": "ds_raw_audit_merge",
+						"type": "DatasetReference",
+						"parameters": {
+							"Audit_Container": {
+								"value": "@pipeline().parameters.adls_container",
+								"type": "Expression"
+							},
+							"Audit_Folder": {
+								"value": "@concat('Audits/', pipeline().parameters.source_system_name, '/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+								"type": "Expression"
+							},
+							"Audit_Filename": "Raw_Audits.csv",
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							}
+						}
+					}
+				]
+			},
+			{
+				"name": "act_delete_audti_temp",
+				"type": "Delete",
+				"dependsOn": [
+					{
+						"activity": "act_audit_merge",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "ds_raw_audits_temp",
+						"type": "DatasetReference",
+						"parameters": {
+							"Audit_Container": {
+								"value": "@pipeline().parameters.adls_container",
+								"type": "Expression"
+							},
+							"Audit_Folder": {
+								"value": "@concat('Audits/', pipeline().parameters.source_system_name, '/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
+								"type": "Expression"
+							},
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							}
+						}
+					},
+					"enableLogging": false,
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"wildcardFileName": "*audit_temp.csv",
+						"enablePartitionDiscovery": false
+					}
+				}
+			}
+		],
+		"parameters": {
+			"db_name": {
+				"type": "string",
+				"defaultValue": "AdventureWorks"
+			},
+			"db_schema": {
+				"type": "string",
+				"defaultValue": "PnC"
+			},
+			"adls_container": {
+				"type": "string",
+				"defaultValue": "dna"
+			},
+			"source_system_name": {
+				"type": "string",
+				"defaultValue": "PnC"
+			},
+			"synapse_raw_dbname": {
+				"type": "string",
+				"defaultValue": "Raw"
+			},
+			"synapse_refined_dbname": {
+				"type": "string",
+				"defaultValue": "Refined"
+			}
+		},
+		"variables": {
+			"dateformat": {
+				"type": "String"
+			},
+			"raw_folder": {
+				"type": "String"
+			},
+			"refined_folder": {
+				"type": "String"
+			},
+			"filename_format": {
+				"type": "String"
+			}
+		},
+		"folder": {
+			"name": "PnC"
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-09-23T23:03:11Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

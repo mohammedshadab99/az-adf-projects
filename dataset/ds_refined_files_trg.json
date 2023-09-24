@@ -1,5 +1,5 @@
 {
-	"name": "ds_get_raw_files",
+	"name": "ds_refined_files_trg",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "ls_gen2_adls",
@@ -12,34 +12,41 @@
 			}
 		},
 		"parameters": {
+			"refined_container": {
+				"type": "string"
+			},
+			"refined_folder": {
+				"type": "string"
+			},
+			"refined_filename": {
+				"type": "string"
+			},
 			"adls_connection_url": {
-				"type": "string"
-			},
-			"raw_container": {
-				"type": "string"
-			},
-			"raw_folder": {
 				"type": "string"
 			}
 		},
+		"folder": {
+			"name": "AdventureWorks"
+		},
 		"annotations": [],
-		"type": "DelimitedText",
+		"type": "Parquet",
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().refined_filename",
+					"type": "Expression"
+				},
 				"folderPath": {
-					"value": "@dataset().raw_folder",
+					"value": "@dataset().refined_folder",
 					"type": "Expression"
 				},
 				"fileSystem": {
-					"value": "@dataset().raw_container",
+					"value": "@dataset().refined_container",
 					"type": "Expression"
 				}
 			},
-			"columnDelimiter": ",",
-			"escapeChar": "\\",
-			"firstRowAsHeader": true,
-			"quoteChar": "\""
+			"compressionCodec": "snappy"
 		},
 		"schema": []
 	},

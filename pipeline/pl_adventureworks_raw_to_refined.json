@@ -1,0 +1,187 @@
+{
+	"name": "pl_adventureworks_raw_to_refined",
+	"properties": {
+		"activities": [
+			{
+				"name": "act_foreach_refined",
+				"type": "ForEach",
+				"dependsOn": [
+					{
+						"activity": "act_get_raw_filenames",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"userProperties": [],
+				"typeProperties": {
+					"items": {
+						"value": "@activity('act_get_raw_filenames').output.childItems",
+						"type": "Expression"
+					},
+					"activities": [
+						{
+							"name": "act_copy_raw_to_refined",
+							"type": "Copy",
+							"dependsOn": [],
+							"policy": {
+								"timeout": "0.12:00:00",
+								"retry": 0,
+								"retryIntervalInSeconds": 30,
+								"secureOutput": false,
+								"secureInput": false
+							},
+							"userProperties": [],
+							"typeProperties": {
+								"source": {
+									"type": "DelimitedTextSource",
+									"storeSettings": {
+										"type": "AzureBlobFSReadSettings",
+										"recursive": true,
+										"enablePartitionDiscovery": false
+									},
+									"formatSettings": {
+										"type": "DelimitedTextReadSettings"
+									}
+								},
+								"sink": {
+									"type": "ParquetSink",
+									"storeSettings": {
+										"type": "AzureBlobFSWriteSettings"
+									},
+									"formatSettings": {
+										"type": "ParquetWriteSettings"
+									}
+								},
+								"enableStaging": false,
+								"translator": {
+									"type": "TabularTranslator",
+									"typeConversion": true,
+									"typeConversionSettings": {
+										"allowDataTruncation": true,
+										"treatBooleanAsNumber": false
+									}
+								}
+							},
+							"inputs": [
+								{
+									"referenceName": "ds_raw_files_src",
+									"type": "DatasetReference",
+									"parameters": {
+										"raw_container": {
+											"value": "@pipeline().parameters.container",
+											"type": "Expression"
+										},
+										"raw_foldername": {
+											"value": "@pipeline().parameters.raw_folder",
+											"type": "Expression"
+										},
+										"raw_filename": {
+											"value": "@item().name",
+											"type": "Expression"
+										},
+										"adls_connection_url": {
+											"value": "@pipeline().globalParameters.adls_connection_url",
+											"type": "Expression"
+										}
+									}
+								}
+							],
+							"outputs": [
+								{
+									"referenceName": "ds_refined_files_trg",
+									"type": "DatasetReference",
+									"parameters": {
+										"refined_container": {
+											"value": "@pipeline().parameters.container",
+											"type": "Expression"
+										},
+										"refined_folder": {
+											"value": "@pipeline().parameters.refined_folder",
+											"type": "Expression"
+										},
+										"refined_filename": {
+											"value": "@concat(split(item().name, '.')[0], '.parquet')",
+											"type": "Expression"
+										},
+										"adls_connection_url": {
+											"value": "@pipeline().globalParameters.adls_connection_url",
+											"type": "Expression"
+										}
+									}
+								}
+							]
+						}
+					]
+				}
+			},
+			{
+				"name": "act_get_raw_filenames",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"dataset": {
+						"referenceName": "ds_get_raw_filenames",
+						"type": "DatasetReference",
+						"parameters": {
+							"raw_container": {
+								"value": "@pipeline().parameters.container",
+								"type": "Expression"
+							},
+							"raw_foldername": {
+								"value": "@pipeline().parameters.raw_folder",
+								"type": "Expression"
+							},
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							}
+						}
+					},
+					"fieldList": [
+						"childItems"
+					],
+					"storeSettings": {
+						"type": "AzureBlobFSReadSettings",
+						"recursive": true,
+						"enablePartitionDiscovery": false
+					},
+					"formatSettings": {
+						"type": "DelimitedTextReadSettings"
+					}
+				}
+			}
+		],
+		"parameters": {
+			"container": {
+				"type": "string"
+			},
+			"raw_folder": {
+				"type": "string"
+			},
+			"refined_folder": {
+				"type": "string"
+			}
+		},
+		"variables": {
+			"schema_name": {
+				"type": "String",
+				"defaultValue": "AdventureWorks"
+			}
+		},
+		"folder": {
+			"name": "AdventureWorks"
+		},
+		"annotations": [],
+		"lastPublishTime": "2023-09-18T18:57:11Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

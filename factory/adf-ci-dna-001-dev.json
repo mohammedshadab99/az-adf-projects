@@ -1,0 +1,17 @@
+{
+	"name": "adf-ci-dna-001-dev",
+	"properties": {
+		"globalParameters": {
+			"adls_connection_url": {
+				"type": "string",
+				"value": "https://stocidna001dev.dfs.core.windows.net/"
+			}
+		}
+	},
+	"location": "centralindia",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "74560604-efc0-4bf4-bf0a-563202e36c20",
+		"tenantId": "75c0b612-3aa7-4c9b-8ff1-87eb24af525c"
+	}
+}

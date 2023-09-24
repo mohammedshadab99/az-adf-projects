@@ -1,5 +1,5 @@
 {
-	"name": "ds_get_raw_files",
+	"name": "ds_azsqldb_trg_raw",
 	"properties": {
 		"linkedServiceName": {
 			"referenceName": "ls_gen2_adls",
@@ -12,27 +12,37 @@
 			}
 		},
 		"parameters": {
+			"container_name": {
+				"type": "string"
+			},
+			"folder_name": {
+				"type": "string"
+			},
+			"filename": {
+				"type": "string"
+			},
 			"adls_connection_url": {
 				"type": "string"
-			},
-			"raw_container": {
-				"type": "string"
-			},
-			"raw_folder": {
-				"type": "string"
 			}
+		},
+		"folder": {
+			"name": "AdventureWorks"
 		},
 		"annotations": [],
 		"type": "DelimitedText",
 		"typeProperties": {
 			"location": {
 				"type": "AzureBlobFSLocation",
+				"fileName": {
+					"value": "@dataset().filename",
+					"type": "Expression"
+				},
 				"folderPath": {
-					"value": "@dataset().raw_folder",
+					"value": "@dataset().folder_name",
 					"type": "Expression"
 				},
 				"fileSystem": {
-					"value": "@dataset().raw_container",
+					"value": "@dataset().container_name",
 					"type": "Expression"
 				}
 			},

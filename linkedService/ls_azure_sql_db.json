@@ -1,0 +1,25 @@
+{
+	"name": "ls_azure_sql_db",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"parameters": {
+			"azure_sql_db_name": {
+				"type": "string",
+				"defaultValue": "azsqldbformula1.database.windows.net"
+			},
+			"azure_sql_username": {
+				"type": "string",
+				"defaultValue": "mshadab"
+			},
+			"azure_sql_password": {
+				"type": "string",
+				"defaultValue": "Mohd@2023"
+			}
+		},
+		"annotations": [],
+		"type": "AzureSqlDatabase",
+		"typeProperties": {
+			"connectionString": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=@{linkedService().azure_sql_db_name};Initial Catalog=AdventureWorks;User ID=@{linkedService().azure_sql_username};Password=@{linkedService().azure_sql_password}"
+		}
+	}
+}
