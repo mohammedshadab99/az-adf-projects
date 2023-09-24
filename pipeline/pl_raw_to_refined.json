@@ -323,14 +323,15 @@
 						"referenceName": "ds_get_raw_files",
 						"type": "DatasetReference",
 						"parameters": {
-							"adls_container_name": {
+							"adls_connection_url": {
+								"value": "@pipeline().globalParameters.adls_connection_url",
+								"type": "Expression"
+							},
+							"raw_container": {
 								"value": "@pipeline().parameters.adls_container_name",
 								"type": "Expression"
 							},
-							"raw_folder_path": {
-								"value": "@concat('Raw/', formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'yyyy/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'MM/'), formatDateTime(convertTimeZone(pipeline().TriggerTime, 'UTC', 'Eastern Standard Time'), 'dd/'))",
-								"type": "Expression"
-							}
+							"raw_folder": "Raw"
 						}
 					},
 					"fieldList": [
